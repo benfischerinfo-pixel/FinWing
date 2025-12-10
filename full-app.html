@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>FinWing - Full App</title>
+  <title>FinWing - Full Rich App</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
@@ -93,21 +93,18 @@
       return 'Unkategorisiert';
     };
 
-    // Lucide Icons - Fixed for version 0.263.1
+    // Lucide Icons
     const Icon = ({ name, size = 24, className = "", strokeWidth = 2, fill = "none" }) => {
       const ref = React.useRef(null);
       React.useEffect(() => {
-        if (ref.current && window.lucide) {
+        if (ref.current) {
           ref.current.innerHTML = '';
-          const iconName = name.charAt(0).toLowerCase() + name.slice(1).replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`);
-          const iconElement = window.lucide.createElement(iconName);
-          if (iconElement) {
-            iconElement.setAttribute('width', size);
-            iconElement.setAttribute('height', size);
-            iconElement.setAttribute('stroke-width', strokeWidth);
-            if (fill !== "none") iconElement.setAttribute('fill', fill);
-            ref.current.appendChild(iconElement);
-          }
+          const icon = lucide.createElement(lucide.icons[name]);
+          icon.setAttribute('width', size);
+          icon.setAttribute('height', size);
+          icon.setAttribute('stroke-width', strokeWidth);
+          if (fill !== "none") icon.setAttribute('fill', fill);
+          ref.current.appendChild(icon);
         }
       }, [name, size, strokeWidth, fill]);
       return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} />;
@@ -160,12 +157,14 @@
     };
 
       // === HEADER ===
-      const Header = ({ xp, levelName, streak, onOpenSettings, onOpenImport, onOpenReport, onOpenLightSpeed, isScanning }) => (
+      const Header = ({ xp, levelName, streak, onOpenSettings, onOpenImport, onOpenReport, onOpenLightSpeed, isScanning, focusMode, onToggleFocusMode }) => (
         <header className="sticky top-0 z-30 bg-[#050505]/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <img src="assets/finwing_logo.png" alt="FinWing Logo" className="w-11 h-11 rounded-xl shadow-lg" />
+                <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 overflow-hidden">
+                  <img src="assets/finwing_logo.png" alt="FinWing" className="w-8 h-8 object-contain" />
+                </div>
                 {isScanning && <div className="absolute inset-0 bg-blue-400/30 rounded-xl animate-ping"></div>}
               </div>
               <div>
@@ -189,6 +188,9 @@
               </div>
             </div>
             <div className="flex gap-2">
+              <button onClick={onToggleFocusMode} className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all ${focusMode ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800/80 border-white/5 hover:bg-slate-700 text-slate-400'}`} title="Focus Mode">
+                <Icon name="Target" size={18}/>
+              </button>
               <button onClick={onOpenLightSpeed} className="w-10 h-10 rounded-full bg-orange-600/30 border border-orange-500/50 flex items-center justify-center hover:bg-orange-600/50 transition-colors" title="LightSpeed POS importieren">
                 <span className="text-lg">☕</span>
               </button>
@@ -1193,8 +1195,7 @@
         const [drillDown, setDrillDown] = useState(null);
         const [aiInsight, setAiInsight] = useState(null);
         const [isAnalyzing, setIsAnalyzing] = useState(false);
-        const [timeFilter, setTimeFilter] = useState('Mo');
-        const [showBowTie, setShowBowTie] = useState(true);
+        const [bowTieView, setBowTieView] = useState(false);
       
         const revenues = DATA_CONFIG.revenues;
         const costs = DATA_CONFIG.costs;
@@ -1267,19 +1268,10 @@
           <div className="space-y-6 pb-24 animate-in">
             <div className="flex justify-between items-end">
               <div><h2 className="text-2xl font-black text-white flex items-center gap-2"><Icon name="ArrowRightLeft" size={24} className="text-emerald-400"/> Geldfluss</h2><p className="text-xs text-slate-400 mt-1">Woher kommt's, wohin geht's?</p></div>
-            </div>
-            
-            {/* Controls */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="bg-[#0a0d14] p-1 rounded-xl border border-slate-800 flex gap-1">
-                {['Tag','Wo','Mo','Jahr'].map(t=>(
-                  <button key={t} onClick={()=>setTimeFilter(t)} className={'px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all '+(timeFilter===t?'bg-indigo-600 text-white':'text-slate-500 hover:text-slate-300')}>{t}</button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="bowtie" checked={showBowTie} onChange={(e)=>setShowBowTie(e.target.checked)} className="w-4 h-4 rounded cursor-pointer" />
-                <label htmlFor="bowtie" className="text-xs font-bold text-slate-400 cursor-pointer">Bow-Tie</label>
-              </div>
+              <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/50 border border-slate-700 cursor-pointer hover:bg-slate-800 transition-colors">
+                <input type="checkbox" checked={bowTieView} onChange={(e)=>setBowTieView(e.target.checked)} className="w-4 h-4 rounded cursor-pointer accent-indigo-500"/>
+                <span className="text-xs font-bold text-slate-400 whitespace-nowrap">Bow-Tie</span>
+              </label>
             </div>
           
             {/* Revenue Section */}
@@ -1475,6 +1467,7 @@
         const [overlays, setOverlays] = useState({import:false,settings:false,report:false,findings:false,lightspeed:false});
         const [isScanning, setIsScanning] = useState(true);
         const [llmEngine, setLlmEngine] = useState('Gemini');
+        const [focusMode, setFocusMode] = useState(() => loadFromStorage('finwing.focusMode', false));
         const [missions, setMissions] = useState(() => loadFromStorage('finwing.missions', [
           {id:1,title:"Lieferant verhandeln",category:"Einkauf",impact:"420 EUR",frequency:"pro Monat",desc:"Mozzarella +12% (Müller GmbH).",color:"bg-purple-500/10 text-purple-400",status:'active'},
           {id:2,title:"Preise optimieren",category:"Umsatz",impact:"650 EUR",frequency:"pro Monat",desc:"+3% auf Top-10 Bestseller.",color:"bg-emerald-500/10 text-emerald-400",status:'active'}
@@ -1489,6 +1482,7 @@
         useEffect(() => { saveToStorage('finwing.xp', xp); }, [xp]);
         useEffect(() => { saveToStorage('finwing.missions', missions); }, [missions]);
         useEffect(() => { saveToStorage('finwing.insights', insights); }, [insights]);
+        useEffect(() => { saveToStorage('finwing.focusMode', focusMode); }, [focusMode]);
         
         const handleImportData = useCallback((type, transactions, suppliers) => {
           setImportedTransactions(transactions);
@@ -1515,6 +1509,7 @@
         const handleComplete = useCallback((id)=>{setMissions(prev=>prev.map(m=>m.id===id?{...m,status:'completed',result:m.impact}:m));setXp(p=>p+100);},[]);
         const handleCreateMission = useCallback((s)=>{setMissions(prev=>[{id:Date.now(),title:s.title,category:s.category,impact:s.impact,frequency:s.frequency||"pro Monat",desc:s.desc||"Aus Simulation.",color:"bg-indigo-500/10 text-indigo-400",status:'active'},...prev]);setView("cockpit");},[]);
         const handleActivateFinding = useCallback((f)=>{const m={id:Date.now(),title:f.title,category:f.category,impact:f.impact.replace('-',''),frequency:"pro Monat",desc:f.desc,color:"bg-blue-500/10 text-blue-400",status:'active'};setMissions(prev=>[m,...prev]);setOverlays(p=>({...p,findings:false}));},[]);
+        const handleToggleFocusMode = useCallback(()=>{setFocusMode(prev=>!prev);},[]);
         const processedFindings = useMemo(()=>findings.map(f=>({...f,isActive:missions.some(m=>m.title===f.title&&m.status==='active')})),[findings,missions]);
         const makeLlmRequest = useCallback(async(prompt,params)=>callLLMSimulator(llmEngine,prompt,params),[llmEngine]);
 
@@ -1523,7 +1518,7 @@
         return (
           <div className="min-h-screen bg-[#050505] text-white font-sans pb-24 relative overflow-hidden">
             <div className="relative z-10">
-              <Header xp={xp} levelName="Cash Manager" streak={streak} onOpenSettings={()=>setOverlays(p=>({...p,settings:true}))} onOpenImport={()=>setOverlays(p=>({...p,import:true}))} onOpenReport={()=>setOverlays(p=>({...p,report:true}))} onOpenLightSpeed={()=>setOverlays(p=>({...p,lightspeed:true}))} isScanning={isScanning}/>
+              <Header xp={xp} levelName="Cash Manager" streak={streak} onOpenSettings={()=>setOverlays(p=>({...p,settings:true}))} onOpenImport={()=>setOverlays(p=>({...p,import:true}))} onOpenReport={()=>setOverlays(p=>({...p,report:true}))} onOpenLightSpeed={()=>setOverlays(p=>({...p,lightspeed:true}))} isScanning={isScanning} focusMode={focusMode} onToggleFocusMode={handleToggleFocusMode}/>
               <main className="mx-auto p-4 max-w-md">
                 {view==='cockpit'&&(
                   <div className="space-y-8 animate-in">
