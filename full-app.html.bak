@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FinWing - Full Rich App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slide-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+    @keyframes pulse { 50% { opacity: .5; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-in { animation: fade-in 0.3s ease-out, slide-up 0.4s ease-out; }
+    .animate-ping { animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite; }
+    .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    .animate-spin { animation: spin 1s linear infinite; }
+    input[type="range"] { -webkit-appearance: none; background: transparent; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: white; cursor: pointer; margin-top: -6px; }
+    input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 8px; background: #1e293b; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-[#050505]">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+    // === LocalStorage Utilities ===
+    const loadFromStorage = (key, defaultValue) => {
+      try {
+        const saved = localStorage.getItem(key);
+        return saved ? JSON.parse(saved) : defaultValue;
+      } catch (e) {
+        console.error('Error loading from storage:', e);
+        return defaultValue;
+      }
+    };
+
+    const saveToStorage = (key, value) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        console.error('Error saving to storage:', e);
+      }
+    };
+
+    // === Auto-Kategorisierung ===
+    const categorizeSupplier = (supplierName) => {
+      const name = (supplierName || '').toLowerCase().trim();
+      
+      // Zahlungsanbieter
+      if (/lightspeed|stripe|paypal|sumup|square|adyen|klarna|nets|wirecard/.test(name)) {
+        return 'Zahlungsanbieter / Plattform (Einnahmen)';
+      }
+      
+      // Wareneinkauf - Supermärkte
+      if (/supermarkt|rewe|aldi|lidl|edeka|metro|kaufland|grossmarkt|großmarkt/.test(name)) {
+        return 'Wareneinkauf';
+      }
+      
+      // Lebensmittel
+      if (/bäck|bäcker|metzger|fleisch|fisch|obst|gemüse|markt|frucht|tomate|kartoffel/.test(name)) {
+        return 'Wareneinkauf / Lebensmittel';
+      }
+      
+      // Steuern
+      if (/steuer|finanzamt|umsatzsteuer|ust/.test(name)) {
+        return 'Steuern / Gebühren';
+      }
+      
+      // Nebenkosten
+      if (/strom|gas|telefon|internet|vodafone|telekom|eon|enbw/.test(name)) {
+        return 'Nebenkosten';
+      }
+      
+      // Personal
+      if (/gehalt|lohn|krankenkasse|sozialversicherung/.test(name)) {
+        return 'Personal';
+      }
+      
+      // Miete
+      if (/miete|vermiet|immobil/.test(name)) {
+        return 'Miete';
+      }
+      
+      return 'Unkategorisiert';
+    };
+
+    // Lucide Icons
+    const Icon = ({ name, size = 24, className = "", strokeWidth = 2, fill = "none" }) => {
+      const ref = React.useRef(null);
+      React.useEffect(() => {
+        if (ref.current) {
+          ref.current.innerHTML = '';
+          const icon = lucide.createElement(lucide.icons[name]);
+          icon.setAttribute('width', size);
+          icon.setAttribute('height', size);
+          icon.setAttribute('stroke-width', strokeWidth);
+          if (fill !== "none") icon.setAttribute('fill', fill);
+          ref.current.appendChild(icon);
+        }
+      }, [name, size, strokeWidth, fill]);
+      return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} />;
+    };
+
+    // === CONFIG ===
+    const DATA_CONFIG = {
+      revenues: [
+        { id: 'food', label: 'Speisen', value: 22000, color: '#10b981', trend: 5 },
+        { id: 'drinks', label: 'Getränke', value: 18500, color: '#34d399', trend: 12 },
+        { id: 'catering', label: 'Catering', value: 8000, color: '#059669', trend: -40, hasAlert: true },
+        { id: 'uber', label: 'Uber Eats', value: 4500, color: '#8b5cf6', trend: 2 }
+      ],
+      costs: [
+        { id: 'cogs', label: 'Wareneinsatz', value: 14500, color: '#ef4444' },
+        { id: 'pers', label: 'Personal', value: 16800, color: '#f97316' },
+        { id: 'fix', label: 'Fixkosten', value: 8800, color: '#eab308' },
+        { id: 'other', label: 'Sonstiges', value: 2500, color: '#64748b' }
+      ],
+      allFindings: [
+        { id: 'pita', type: 'cost_spike', title: 'Preisanstieg: Pita Brot', desc: '+0,05 EUR pro Stück seit 02.12.', impact: '-1.800 EUR', category: 'Einkauf', severity: 'high' },
+        { id: 'kitchen', type: 'anomaly', title: 'Anomalie: Küchenrolle', desc: 'Verbrauch +30% ohne Umsatzanstieg.', impact: '-450 EUR', category: 'Operations', severity: 'medium' },
+        { id: 'energy', type: 'cost_spike', title: 'Stromabschlag erhöht', desc: 'Stadtwerke: Abschlag +15%.', impact: '-2.100 EUR', category: 'Fixkosten', severity: 'high' }
+      ],
+      drillDowns: {
+        food: { title: "Analyse: Speisen", items: [{ name: "Pizza Margherita", amount: 4200, unit: "Stk", total: 35700, ly: 3800, trend: 10.5, status: "ok" }, { name: "Trüffel Pasta", amount: 3800, unit: "Stk", total: 49400, ly: 2100, trend: 80.9, status: "star" }, { name: "Falafel Pita", amount: 1200, unit: "Stk", total: 9600, ly: 3500, trend: -65.7, status: "danger" }], insight: { type: "danger", title: "KI: Falafel Einbruch", text: "Absatz -65% trotz Veggie-Trend.", action: "Rezept überarbeiten" } },
+        drinks: { title: "Analyse: Getränke", items: [{ name: "Hausgem. Limo", amount: 8500, unit: "L", total: 34000, ly: 6000, trend: 41.6, status: "star" }, { name: "Aperol Spritz", amount: 4200, unit: "Gl", total: 29400, ly: 4100, trend: 2.4, status: "ok" }], insight: { type: "success", title: "Marge optimieren", text: "Limo ist Renner. Preis +0,50 EUR möglich.", action: "Preis anpassen" } },
+        catering: { title: "Analyse: Catering", items: [{ name: "Business Lunch", amount: 45, unit: "Events", total: 4500, trend: -45.1, status: "danger" }, { name: "Private Events", amount: 12, unit: "Events", total: 2400, trend: -20.0, status: "warning" }, { name: "Firmen-Catering", amount: 8, unit: "Events", total: 1100, trend: -68.0, status: "danger" }], insight: { type: "danger", title: "Catering kritisch!", text: "Großkunde Meyer AG abgesprungen. Akquise nötig!", action: "Neukunden gewinnen" } },
+        uber: { title: "Analyse: Lieferung", items: [{ name: "Uber Eats", amount: 320, unit: "Orders", total: 3200, trend: 3.2, status: "ok" }, { name: "Wolt", amount: 85, unit: "Orders", total: 850, trend: 41.6, status: "star" }, { name: "Eigenlieferung", amount: 45, unit: "Orders", total: 450, trend: -43.7, status: "danger" }], insight: { type: "warning", title: "Provision frisst Marge", text: "32% an Uber = 1.024 EUR Gebühren.", action: "Eigene Lieferung stärken" } },
+        cogs: { title: "Detail: Wareneinsatz", isCost: true, items: [{ name: "Fleischerei Müller", amount: 450, unit: "kg", total: 5400, ly: 4800, trend: 12.5, status: "danger" }, { name: "Gemüse Großmarkt", amount: 1200, unit: "kg", total: 3600, ly: 3500, trend: 2.8, status: "ok" }], insight: { type: "warning", title: "Synergie-Check", text: "Fleisch steigt, Burger stagniert.", action: "Lieferant anrufen" } },
+        pers: { title: "Detail: Personal", isCost: true, items: [{ name: "Küche (Fest)", amount: 3, unit: "MA", total: 8500, ly: 8500, trend: 0.0, status: "ok" }, { name: "Aushilfen", amount: 180, unit: "Std", total: 3200, ly: 2100, trend: 52.3, status: "danger" }], insight: { type: "danger", title: "Ineffizienz", text: "Di-Abend: 4 Aushilfen bei 800 EUR Umsatz.", action: "Dienstplan anpassen" } },
+        fix: { title: "Detail: Fixkosten", isCost: true, items: [{ name: "Miete", amount: 1, unit: "x", total: 4500, ly: 4500, trend: 0.0, status: "ok" }, { name: "Energie", amount: 1, unit: "x", total: 1800, ly: 1200, trend: 50.0, status: "danger" }], insight: { type: "warning", title: "Energie", text: "+50% vs. Vorjahr.", action: "Geräte prüfen" } },
+        other: { title: "Detail: Sonstiges", isCost: true, items: [{ name: "Marketing", amount: 1, unit: "x", total: 800, trend: 33.3, status: "warning" }, { name: "Reparaturen", amount: 1, unit: "x", total: 1200, trend: 140.0, status: "danger" }, { name: "Büromaterial", amount: 1, unit: "x", total: 300, trend: -14.3, status: "ok" }], insight: { type: "danger", title: "Reparaturen hoch", text: "1.200 EUR - Kühlschrank defekt?", action: "Geräte-Check" } },
+        profit: { title: "Gewinnanalyse", isProfit: true, items: [{ name: "Marge Speisen", amount: 1, unit: "x", total: 7500, ly: 6800, trend: 10.3, status: "ok" }, { name: "Marge Getränke", amount: 1, unit: "x", total: 11100, ly: 9500, trend: 16.8, status: "star" }], insight: { type: "success", title: "Gesamtbild", text: "Gewinn stabil durch Getränke-Marge.", action: "Getränke-Fokus" } }
+      }
+    };
+
+    const formatEuro = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
+    const formatPercent = (val) => (val > 0 ? '+' : '') + val.toFixed(1) + '%';
+
+    const callLLMSimulator = async (engine, prompt, params) => {
+      const delay = engine === 'Claude' ? 2200 : engine === 'OpenAI' ? 1800 : 1500;
+      await new Promise(r => setTimeout(r, delay));
+      const prefix = engine === 'Claude' ? '[Claude] ' : engine === 'OpenAI' ? '[GPT-4] ' : '[Gemini] ';
+      if (prompt === "AUTO_SCAN") return { newMissions: [{ id: Date.now()+1, title: "Stromfresser eliminieren", category: "Kosten", impact: "150 EUR", frequency: "einmalig", desc: "Alte Kühltruhe verbraucht zu viel.", color: "bg-red-500/10 text-red-400", status: 'active' }], newInsights: [{ type: 'win', title: 'Wareneinsatz optimiert!', text: '+450 EUR mehr Gewinn diesen Monat.' }] };
+      if (prompt === "ANALYZE_FLOW") return { aiResponse: prefix + "Hauptproblem: Catering -40% (3.200 EUR Verlust). Getränke kompensieren teilweise (+12%). Empfehlung: 1) Catering-Akquise starten, 2) Limo-Preis +0,50 EUR, 3) Aushilfen-Effizienz prüfen." };
+      if (prompt.toLowerCase().includes("hebel")) return { aiResponse: prefix + "Größter Hebel: Personal. Dienstag-Ineffizienz kostet 240 EUR/Monat." };
+      const delta = (params?.price||0) + (params?.volume||0) - (params?.cost||0);
+      return { aiResponse: prefix + (delta > 10 ? "Signifikanter Hebel: +" + delta + "%" : delta < -10 ? "Vorsicht: Verlust!" : "Neutral. Stärkere Hebel vorhanden.") };
+    };
+
+      // === HEADER ===
+      const Header = ({ xp, levelName, streak, onOpenSettings, onOpenImport, onOpenReport, onOpenLightSpeed, isScanning }) => (
+        <header className="sticky top-0 z-30 bg-[#050505]/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25">
+                  <Icon name="Zap" size={22} className="text-white" fill="white" />
+                </div>
+                {isScanning && <div className="absolute inset-0 bg-blue-400/30 rounded-xl animate-ping"></div>}
+              </div>
+              <div>
+                <h1 className="font-black text-xl tracking-tight leading-none text-white">FinWing</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  {isScanning ? (
+                    <span className="text-[10px] font-bold text-indigo-400 uppercase flex items-center gap-1.5">
+                      <Icon name="Loader" size={10} className="animate-spin"/> Analysiere...
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-[10px] font-bold text-blue-400 uppercase border border-blue-500/30 px-1.5 py-0.5 rounded bg-blue-500/10">{levelName}</span>
+                      <div className="h-1.5 w-14 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-blue-400 to-indigo-500" style={{width:((xp%1000)/10)+'%'}}></div>
+                      </div>
+                      <span className="text-[9px] text-slate-600 font-mono">{xp} XP</span>
+                      {streak > 0 && <span className="text-[9px] font-bold text-orange-400 flex items-center gap-0.5 ml-1"><Icon name="Flame" size={10}/>{streak}d</span>}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={onOpenLightSpeed} className="w-10 h-10 rounded-full bg-orange-600/30 border border-orange-500/50 flex items-center justify-center hover:bg-orange-600/50 transition-colors" title="LightSpeed POS importieren">
+                <span className="text-lg">☕</span>
+              </button>
+              <button onClick={onOpenReport} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center border border-white/5 hover:bg-slate-700 transition-colors">
+                <Icon name="FileText" size={18} className="text-indigo-400"/>
+              </button>
+              <button onClick={onOpenImport} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center border border-white/5 hover:bg-slate-700 transition-colors">
+                <Icon name="Upload" size={18} className="text-emerald-400"/>
+              </button>
+              <button onClick={onOpenSettings} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center border border-white/5 hover:bg-slate-700 transition-colors">
+                <Icon name="Settings" size={18} className="text-slate-400"/>
+              </button>
+            </div>
+          </div>
+        </header>
+      );
+
+      // === STATUS SECTION ===
+      const StatusSection = ({ data }) => {
+        const reserved = (data.upcomingPayments||[]).reduce((s,i)=>s+i.amount,0);
+        const available = data.cashBalance - reserved;
+        const totalCosts = Object.values(data.costs||{}).reduce((a,b)=>a+b,0);
+        const runwayDays = totalCosts > 0 ? Math.floor((available/totalCosts)*30) : 999;
+        const isInfinite = runwayDays > 365;
+        return (
+          <div className="bg-gradient-to-br from-[#0f131a] to-[#0a0d12] rounded-[2rem] border border-emerald-500/20 p-6 relative overflow-hidden shadow-2xl">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl -mr-12 -mt-12"></div>
+            <div className="flex justify-between items-start mb-6 relative z-10">
+              <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase">
+                <Icon name="PiggyBank" size={14} className="text-emerald-500"/> Liquidität
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500 text-black text-[10px] font-black">
+                <Icon name="CheckCircle2" size={12} strokeWidth={3}/> STABIL
+              </div>
+            </div>
+            <div className="flex items-center gap-4 mb-8 relative z-10">
+              {isInfinite ? <Icon name="Infinity" size={64} className="text-white" strokeWidth={2.5}/> : <span className="text-6xl font-black text-white">{runwayDays}</span>}
+              <div>
+                <span className="text-xl text-slate-500 font-bold uppercase block">Tage Puffer</span>
+                <span className="text-[10px] text-slate-600">bei aktuellem Burn-Rate</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 border-t border-slate-800/50 pt-5 relative z-10">
+              <div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Verfügbar</div>
+                <div className="text-2xl font-bold text-emerald-400 font-mono">{formatEuro(available)}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Reserviert</div>
+                <div className="text-lg font-bold text-red-400/80 font-mono">-{formatEuro(reserved)}</div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // === REVENUE WIDGET ===
+      const RevenueWidget = ({ data }) => {
+        const [activeTab, setActiveTab] = useState('Mo');
+        const pct = (data.revenue/data.plannedRevenue)*100;
+        const isOnTrack = pct >= 90;
+        return (
+          <div className="bg-[#141824] rounded-[2rem] border border-slate-800 p-6 relative overflow-hidden shadow-lg">
+            <div className="flex justify-between items-center mb-6">
+              <div className="bg-[#0a0d14] p-1 rounded-xl border border-slate-800 flex gap-1">
+                {['Tag','Wo','Mo','Jahr'].map(t=>(
+                  <button key={t} onClick={()=>setActiveTab(t)} className={'px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all '+(activeTab===t?'bg-indigo-600 text-white':'text-slate-500 hover:text-slate-300')}>{t}</button>
+                ))}
+              </div>
+              <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 text-emerald-400">
+                <Icon name="Target" size={16}/>
+              </div>
+            </div>
+            <div className="relative z-10">
+              <div className="text-[10px] font-bold text-slate-500 uppercase mb-2">Dieser Monat</div>
+              <div className="flex items-baseline gap-3 mb-4">
+                <span className="text-4xl font-black text-white">{formatEuro(data.revenue)}</span>
+                <span className="text-sm text-slate-600 font-bold">/ {formatEuro(data.plannedRevenue)}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className={'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold '+(isOnTrack?'bg-emerald-500/10 border-emerald-500/20 text-emerald-400':'bg-yellow-500/10 border-yellow-500/20 text-yellow-400')}>
+                  <Icon name={isOnTrack?"CheckCircle2":"Clock"} size={12}/>{pct.toFixed(1)}% Ziel
+                </div>
+                <div className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold text-emerald-400">
+                  <Icon name="ArrowUpRight" size={12}/> +8.5% vs. VJ
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // === INSIGHTS SECTION ===
+      const InsightsSection = ({ onOpenFindings, onOpen, insights=[] }) => (
+        <div className="space-y-4">
+          <div className="flex justify-between items-end px-1">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <Icon name="Bell" size={18} className="text-indigo-400"/> Signale & Wins
+            </h3>
+            <button onClick={onOpenFindings} className="text-[10px] font-bold text-slate-500 hover:text-white uppercase flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-slate-800 transition-colors">
+              Alle ({DATA_CONFIG.allFindings.length}) <Icon name="ChevronRight" size={12}/>
+            </button>
+          </div>
+          {(insights||[]).map((item,idx)=>item.type==='win'?( 
+            <div key={idx} className="group relative overflow-hidden bg-gradient-to-br from-[#1a180b] to-[#0f0f0f] border border-yellow-500/30 rounded-2xl p-1 hover:border-yellow-500/60 transition-colors">
+              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-yellow-400 to-yellow-600 rounded-l"></div>
+              <div className="absolute top-0 right-0 p-4 opacity-10"><Icon name="Trophy" size={72} className="text-yellow-500 rotate-12"/></div>
+              <div className="p-5 pl-6 relative z-10">
+                <span className="text-[10px] font-black text-yellow-500 uppercase bg-yellow-500/10 px-2.5 py-1 rounded-lg border border-yellow-500/20 flex items-center gap-1.5 w-fit mb-3">
+                  <Icon name="Star" size={10} fill="currentColor"/> Win der Woche
+                </span>
+                <h4 className="text-white font-bold text-lg mb-2">{item.title}</h4>
+                <p className="text-sm text-slate-400">{item.text}</p>
+              </div>
+            </div>
+          ):null)}
+          <div onClick={()=>onOpen&&onOpen('pita')} className="cursor-pointer group relative overflow-hidden bg-gradient-to-br from-[#1a1515] to-[#0f0a0a] border border-red-500/30 rounded-2xl p-1 hover:border-red-500/60 transition-colors">
+            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-red-400 to-red-600 rounded-l"></div>
+            <div className="p-4 pl-6 flex justify-between items-center">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-red-500 uppercase">Preisanstieg</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-bold">HIGH</span>
+                </div>
+                <h4 className="text-white font-bold text-lg">Pita Brot <span className="text-red-400 ml-1">+0,05 EUR</span></h4>
+                <p className="text-xs text-slate-500 mt-0.5">Impact: -1.800 EUR/Monat</p>
+              </div>
+              <Icon name="ArrowRight" size={20} className="text-slate-600 group-hover:text-white transition-colors"/>
+            </div>
+          </div>
+        </div>
+      );
+
+      // === MISSION CARD ===
+      const MissionCard = ({ id, category, title, desc, impact, frequency, color, status, onComplete, result }) => {
+        const [isCompleting, setIsCompleting] = useState(false);
+        const safeColor = color || "bg-slate-500/10 text-slate-400";
+        const handleComplete = async () => { setIsCompleting(true); await new Promise(r=>setTimeout(r,600)); onComplete(id); };
+        return (
+          <div className={'group bg-[#141824] border border-slate-800 rounded-[1.5rem] p-5 hover:border-slate-700 transition-all shadow-lg relative overflow-hidden '+(status==='completed'?'opacity-70':'')+(isCompleting?' scale-95 opacity-50':'')}>
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-indigo-400 to-indigo-600 rounded-l"></div>
+            <div className="pl-3">
+              <div className="flex justify-between items-start mb-4">
+                <span className={'text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase border border-white/5 '+safeColor}>{category}</span>
+                <div className="text-right">
+                  {status==='completed'?(
+                    <>
+                      <div className="text-[9px] font-bold text-emerald-500 uppercase mb-0.5 flex items-center gap-1 justify-end"><Icon name="CheckCircle2" size={10}/> Ergebnis</div>
+                      <div className="text-base font-black text-white">{result||impact}</div>
+                    </>
+                  ):(
+                    <>
+                      <div className="text-[9px] font-bold text-slate-500 uppercase mb-0.5">Potenzial</div>
+                      <div className="text-lg font-black text-emerald-400">+{impact}</div>
+                      <div className="text-[9px] text-slate-600">{frequency}</div>
+                    </>
+                  )}
+                </div>
+              </div>
+              <h4 className={'font-bold text-white text-lg mb-2 '+(status==='completed'?'line-through text-slate-500':'')}>{title}</h4>
+              <p className="text-xs text-slate-400 mb-5">{desc}</p>
+              {status==='active'&&(
+                <button onClick={handleComplete} disabled={isCompleting} className="w-full py-3 bg-white text-slate-950 rounded-xl text-xs font-bold hover:bg-slate-100 flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 transition-all">
+                  {isCompleting?<Icon name="Loader" size={14} className="animate-spin"/>:<Icon name="Check" size={14} strokeWidth={3}/>}
+                  {isCompleting?'Wird gespeichert...':'Als erledigt markieren'}
+                </button>
+              )}
+              {status==='completed'&&(
+                <div className="w-full py-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-emerald-500/20">
+                  <Icon name="Trophy" size={12}/> Abgeschlossen
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      // === JOURNAL VIEW ===
+      const JournalView = ({ missions, onComplete }) => {
+        const [tab, setTab] = useState('active');
+        const filtered = (missions||[]).filter(m=>tab==='active'?m.status==='active':m.status==='completed');
+        const totalSaved = (missions||[]).filter(m=>m.status==='completed').reduce((s,m)=>s+parseInt((m.result||m.impact||'0').replace(/[^0-9]/g,'')||0),0);
+        return (
+          <div className="space-y-6 pb-24 animate-in">
+            <div className="flex justify-between items-end mb-2">
+              <div>
+                <h2 className="text-2xl font-black text-white flex items-center gap-2"><Icon name="BookOpen" className="text-indigo-400"/> Logbuch</h2>
+                <p className="text-xs text-slate-400 mt-1">Tracke deine Fortschritte.</p>
+              </div>
+              {totalSaved>0&&<div className="text-right"><div className="text-[9px] text-slate-500 uppercase font-bold">Gespart</div><div className="text-lg font-black text-emerald-400">{formatEuro(totalSaved)}</div></div>}
+            </div>
+            <div className="flex p-1.5 bg-[#0a0d14] rounded-xl border border-slate-800">
+              <button onClick={()=>setTab('active')} className={'flex-1 py-2.5 rounded-lg text-xs font-bold uppercase flex items-center justify-center gap-2 transition-colors '+(tab==='active'?'bg-indigo-600 text-white':'text-slate-500 hover:text-white')}><Icon name="Activity" size={14}/> Laufend ({(missions||[]).filter(m=>m.status==='active').length})</button>
+              <button onClick={()=>setTab('completed')} className={'flex-1 py-2.5 rounded-lg text-xs font-bold uppercase flex items-center justify-center gap-2 transition-colors '+(tab==='completed'?'bg-emerald-600 text-white':'text-slate-500 hover:text-white')}><Icon name="Trophy" size={14}/> Historie ({(missions||[]).filter(m=>m.status==='completed').length})</button>
+            </div>
+            <div className="space-y-3">
+              {filtered.length>0?filtered.map(m=><MissionCard key={m.id} {...m} onComplete={onComplete}/>):(
+                <div className="text-center py-12 px-6 bg-slate-900/30 rounded-2xl border border-dashed border-slate-800">
+                  {tab==='active'?<><Icon name="CheckCircle2" size={48} className="mx-auto text-emerald-500/50 mb-3"/><p className="text-slate-500">Alle Missionen erledigt!</p></>:<><Icon name="BookOpen" size={48} className="mx-auto text-slate-700 mb-3"/><p className="text-slate-500">Noch keine Historie</p></>}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      // === FINDINGS MODAL ===
+      const FindingsModal = ({ onClose, findings=[], onActivate }) => {
+        const [filter, setFilter] = useState('all');
+        const filtered = filter==='all'?findings:findings.filter(f=>f.severity===filter);
+        const sev = {high:{color:'text-red-400 bg-red-500/10 border-red-500/20',label:'Hoch'},medium:{color:'text-orange-400 bg-orange-500/10 border-orange-500/20',label:'Mittel'},low:{color:'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',label:'Niedrig'}};
+        return (
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col animate-in">
+            <div className="p-6 border-b border-slate-800 bg-[#0a0d12]">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-black text-white flex items-center gap-2"><Icon name="AlertTriangle" size={24} className="text-orange-400"/> Alle Signale</h2>
+                <button onClick={onClose} className="p-2.5 bg-slate-800 rounded-full hover:bg-slate-700 transition-colors"><Icon name="X" size={20} className="text-slate-400"/></button>
+              </div>
+              <div className="flex gap-2">
+                {['all','high','medium','low'].map(f=>(
+                  <button key={f} onClick={()=>setFilter(f)} className={'px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors '+(filter===f?'bg-indigo-600 text-white':'bg-slate-800 text-slate-400 hover:bg-slate-700')}>{f==='all'?'Alle ('+findings.length+')':sev[f]?.label}</button>
+                ))}
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-3">
+              {filtered.map(f=>(
+                <div key={f.id} className="bg-[#141824] border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-colors">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2">
+                      {f.type==='cost_spike'&&<Icon name="TrendingUp" size={16} className="text-red-400"/>}
+                      {f.type==='anomaly'&&<Icon name="AlertTriangle" size={16} className="text-orange-400"/>}
+                      <span className="text-xs font-bold text-slate-300 uppercase">{f.category}</span>
+                      <span className={'text-[9px] px-1.5 py-0.5 rounded font-bold border '+(sev[f.severity||'medium']?.color||'')}>{sev[f.severity||'medium']?.label}</span>
+                    </div>
+                    <span className="text-base font-black text-white bg-slate-800 px-3 py-1 rounded-lg">{f.impact}</span>
+                  </div>
+                  <h4 className="text-white font-bold text-lg mb-1">{f.title}</h4>
+                  <p className="text-sm text-slate-400 mb-4">{f.desc}</p>
+                  {f.isActive?(
+                    <div className="w-full py-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-center text-xs font-bold text-indigo-300 flex items-center justify-center gap-2"><Icon name="Activity" size={14}/> Bereits aktiv</div>
+                  ):(
+                    <button onClick={()=>onActivate(f)} className="w-full py-3 bg-white text-black rounded-xl text-xs font-bold hover:bg-slate-100 flex items-center justify-center gap-2 transition-colors"><Icon name="Plus" size={14} strokeWidth={3}/> Challenge annehmen</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      };
+
+      // === LIGHTSPEED CSV PARSER ===
+      const parseLightSpeedCSV = (csvText) => {
+        const lines = csvText.split('\n').filter(l => l.trim());
+        if (!lines.length) return null;
+        
+        const header = lines[0];
+        let format = null;
+        
+        if (header.includes('Name') && header.includes('Anzahl') && header.includes('Brutto')) {
+          format = 'umsatz_artikel';
+        } else if (header.includes('Name') && header.includes('Brutto') && !header.includes('Anzahl')) {
+          format = 'umsatz_obergruppe';
+        } else if (header.includes('Id') && header.includes('Datum')) {
+          format = 'detailtransaktionen';
+        }
+        
+        if (!format) return { error: 'Format nicht erkannt' };
+        
+        const result = { format, summary: { totalRevenue: 0 } };
+        
+        if (format === 'umsatz_artikel') {
+          result.articles = [];
+          for (let i = 1; i < Math.min(lines.length, 100); i++) {
+            const parts = lines[i].split(';');
+            if (parts.length < 6 || lines[i].includes('Gesamt')) continue;
+            const name = parts[1]?.trim();
+            const qty = parseInt(parts[3]) || 0;
+            const brutto = parseFloat(parts[5]) || 0;
+            if (name && qty > 0) {
+              result.articles.push({ name, qty, brutto });
+              result.summary.totalRevenue += brutto;
+            }
+          }
+        }
+        
+        return result;
+      };
+
+      // === DATA WISHLIST ===
+      const generateDataWishlist = (format) => {
+        const items = [];
+        items.push({
+          priority: 'high',
+          title: 'Wareneinsatz pro Artikel',
+          description: 'Aus LightSpeed: Waren-/Materialkosten Export'
+        });
+        items.push({
+          priority: 'high',
+          title: 'Personalkosten',
+          description: 'Monatliche Lohnkosten aus DATEV'
+        });
+        if (format !== 'detailtransaktionen') {
+          items.push({
+            priority: 'medium',
+            title: 'Tägliche Zeitreihe',
+            description: 'Letzten 30 Tage von LightSpeed'
+          });
+        }
+        return items;
+      };
+
+      // === LIGHTSPEED IMPORT MODAL ===
+      const LightSpeedImportModal = ({ onClose, onImport }) => {
+        const [file, setFile] = useState(null);
+        const [status, setStatus] = useState('idle');
+        const [progress, setProgress] = useState(0);
+        const [parsedData, setParsedData] = useState(null);
+        const [wishlist, setWishlist] = useState([]);
+        const fileInputRef = useRef(null);
+
+        const handleFileSelect = (selectedFile) => {
+          if (!selectedFile.name.endsWith('.csv')) {
+            alert('Nur CSV-Dateien möglich');
+            return;
+          }
+
+          setFile(selectedFile);
+          setStatus('processing');
+          setProgress(30);
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setProgress(60);
+            const result = parseLightSpeedCSV(e.target.result);
+            
+            if (result?.error) {
+              alert('CSV-Format nicht erkannt. Bitte Umsatz nach Artikel oder nach Obergruppe exportieren.');
+              setStatus('idle');
+              return;
+            }
+
+            setProgress(80);
+            setParsedData(result);
+            setWishlist(generateDataWishlist(result.format));
+            setProgress(100);
+            setStatus('success');
+          };
+
+          reader.readAsText(selectedFile);
+        };
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[85vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white p-6 border-b flex justify-between items-center">
+                <h2 className="text-xl font-bold">{status === 'success' ? '📊 Daten importiert' : '☕ LightSpeed POS Import'}</h2>
+                <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {status === 'idle' && (
+                  <>
+                    <div
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        handleFileSelect(e.dataTransfer.files[0]);
+                      }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition"
+                    >
+                      <Upload size={48} className="mx-auto text-gray-400 mb-4" />
+                      <p className="font-semibold text-gray-900 mb-2">CSV Datei ablegen oder klicken</p>
+                      <p className="text-sm text-gray-600">Unterstützt: "Umsatz nach Artikel" oder "Umsatz nach Obergruppe"</p>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".csv"
+                        onChange={(e) => e.target.files[0] && handleFileSelect(e.target.files[0])}
+                        className="hidden"
+                      />
+                    </div>
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                      <strong>💡 Wie exportieren?</strong><br/>
+                      In LightSpeed: Reports → Umsatz → Artikel/Obergruppe → Als CSV speichern
+                    </div>
+                  </>
+                )}
+
+                {status === 'processing' && (
+                  <div className="py-12 text-center">
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                      <div className="bg-blue-500 h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                    </div>
+                    <p className="text-gray-600">Wird analysiert... {progress}%</p>
+                  </div>
+                )}
+
+                {status === 'success' && parsedData && (
+                  <>
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="font-semibold text-green-900">✓ Erfolgreich erkannt!</p>
+                      <p className="text-sm text-green-700 mt-1">
+                        Format: {parsedData.format === 'umsatz_artikel' ? 'Artikel-Detail' : 'Obergruppe-Übersicht'}<br/>
+                        Gesamt: {parsedData.summary.totalRevenue.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                      </p>
+                    </div>
+
+                    {parsedData.articles && (
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-2">Top Artikel</h3>
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                          {parsedData.articles.slice(0, 8).map((a, i) => (
+                            <div key={i} className="flex justify-between text-sm p-2 bg-gray-50 rounded">
+                              <span className="text-gray-700">{a.name}</span>
+                              <span className="font-medium">{a.brutto.toFixed(2)}€</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">📋 Data Wishlist</h3>
+                      <div className="space-y-2">
+                        {wishlist.map((w, i) => (
+                          <div key={i} className={`p-3 rounded text-sm border-l-4 ${
+                            w.priority === 'high' ? 'bg-red-50 border-red-400 text-red-800' : 'bg-yellow-50 border-yellow-400 text-yellow-800'
+                          }`}>
+                            <strong>{w.title}</strong><br/>
+                            <span className="text-xs">{w.description}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {status === 'success' && (
+                <div className="sticky bottom-0 bg-gray-50 border-t p-6 flex gap-3 justify-end">
+                  <button onClick={onClose} className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">
+                    Abbrechen
+                  </button>
+                  <button onClick={() => { onImport?.(parsedData); onClose(); }} className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                    Daten Laden
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      // === REPORT VIEW ===
+      const ReportView = ({ onClose }) => {
+        const [step, setStep] = useState('preview');
+        const [sel, setSel] = useState({liquidity:true,anomalies:true,sandbox:false,missions:true});
+        const handleDownload = () => {setStep('generating');setTimeout(()=>{setStep('success');setTimeout(()=>onClose(),2000);},1500);};
+        return (
+          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in">
+            <div className="bg-[#121218] w-full max-w-md rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
+              <div className="p-6 border-b border-slate-800 bg-gradient-to-br from-slate-900/50 to-transparent flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center"><Icon name="Briefcase" size={20} className="text-indigo-400"/></div>
+                  <div><h3 className="text-lg font-bold text-white">Kanzlei-Briefing</h3><p className="text-[10px] text-slate-500 uppercase">DATEV-kompatibel</p></div>
+                </div>
+                <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors"><Icon name="X" className="text-slate-400" size={20}/></button>
+              </div>
+              <div className="p-6 space-y-5">
+                {step==='preview'&&(
+                  <>
+                    <p className="text-sm text-slate-400">Wähle die Inhalte:</p>
+                    <div className="space-y-2">
+                      {[{key:'liquidity',icon:'PiggyBank',label:'Liquiditäts-Status'},{key:'anomalies',icon:'AlertTriangle',label:'Anomalien'},{key:'sandbox',icon:'Sliders',label:'Sandbox-Szenario'},{key:'missions',icon:'Target',label:'Aktive Missionen'}].map(i=>(
+                        <button key={i.key} onClick={()=>setSel(p=>({...p,[i.key]:!p[i.key]}))} className={'w-full p-4 rounded-xl border transition-all '+(sel[i.key]?'bg-slate-800/50 border-slate-600':'bg-slate-800/30 border-slate-800 opacity-50')}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={'w-8 h-8 rounded-lg flex items-center justify-center '+(sel[i.key]?'bg-slate-700':'bg-slate-800')}>{sel[i.key]?<Icon name="Check" size={14} className="text-emerald-400"/>:<Icon name={i.icon} size={14} className="text-slate-500"/>}</div>
+                              <span className={'text-sm font-bold '+(sel[i.key]?'text-white':'text-slate-500')}>{i.label}</span>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={handleDownload} className="w-full py-4 bg-white text-black rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors"><Icon name="Download" size={18}/> Als PDF exportieren</button>
+                  </>
+                )}
+                {step==='generating'&&(<div className="py-12 text-center"><Icon name="Loader" size={48} className="mx-auto text-indigo-400 animate-spin mb-4"/><p className="text-white font-bold">Erstelle Briefing...</p></div>)}
+                {step==='success'&&(<div className="py-12 text-center"><div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4"><Icon name="CheckCircle2" size={32} className="text-emerald-400"/></div><p className="text-white font-bold text-lg">Export erfolgreich!</p><p className="text-slate-500 text-sm mt-1">finwing-briefing-dez24.pdf</p></div>)}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // === DATA IMPORT VIEW ===
+      const DataImportView = ({ onClose, onImport }) => {
+        const [status, setStatus] = useState("idle");
+        const [tab, setTab] = useState('upload');
+        const [progress, setProgress] = useState(0);
+        const [file, setFile] = useState(null);
+        const [previewData, setPreviewData] = useState([]);
+        const [detectedType, setDetectedType] = useState(null);
+        const [uploadType, setUploadType] = useState('csv'); // 'csv' or 'pdf'
+        
+        const parseCSV = (text) => {
+          const lines = text.split(/\r?\n/).filter(l => l.trim());
+          if (lines.length === 0) return [];
+          
+          const sep = lines[0].includes(';') ? ';' : ',';
+          const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g, ''));
+          
+          return lines.slice(1).map(line => {
+            const values = line.split(sep).map(v => v.trim().replace(/^"|"$/g, ''));
+            const row = {};
+            headers.forEach((h, i) => row[h] = values[i] || '');
+            return row;
+          });
+        };
+        
+        // Detect CSV type based on headers
+        const detectCSVType = (headers) => {
+          const headerStr = headers.join('|').toLowerCase();
+          
+          // Bank statements (Kontoauszug)
+          if (headerStr.includes('betrag') && headerStr.includes('empfänger') || 
+              headerStr.includes('buchungstag') || 
+              headerStr.includes('zahlungsbeteiligter')) {
+            return 'bank';
+          }
+          
+          // POS/Kasse (orderbird, gastrofix, ready2order)
+          if (headerStr.includes('artikel') && headerStr.includes('menge') ||
+              headerStr.includes('product') && headerStr.includes('quantity') ||
+              headerStr.includes('bon') || headerStr.includes('receipt')) {
+            return 'pos';
+          }
+          
+          // Lieferanten-Rechnungen
+          if (headerStr.includes('lieferant') && headerStr.includes('rechnungsnummer') ||
+              headerStr.includes('vendor') && headerStr.includes('invoice') ||
+              headerStr.includes('supplier')) {
+            return 'invoices';
+          }
+          
+          return 'unknown';
+        };
+        
+        // Extract text from PDF (simplified - real implementation would use pdf.js)
+        const extractPDFText = async (file) => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              // Simplified: just extract filename and basic info
+              // In production, you'd use pdf.js library
+              const fileName = file.name;
+              const fileSize = file.size;
+              resolve({ fileName, fileSize, extracted: true });
+            };
+            reader.readAsArrayBuffer(file);
+          });
+        };
+        
+        // Detect PDF type and extract amounts
+        const analyzePDF = (fileName, text) => {
+          const nameLower = fileName.toLowerCase();
+          
+          // Uber receipts
+          if (nameLower.includes('uber') || nameLower.includes('trip')) {
+            return {
+              type: 'uber',
+              source: 'Uber',
+              category: 'Zahlungsanbieter',
+              icon: '🚗'
+            };
+          }
+          
+          // Catering payments
+          if (nameLower.includes('catering') || nameLower.includes('event') || 
+              nameLower.includes('rechnung') || nameLower.includes('invoice')) {
+            return {
+              type: 'catering',
+              source: 'Catering',
+              category: 'Wareneinkauf / Lebensmittel',
+              icon: '🍽️'
+            };
+          }
+          
+          // General payment receipt
+          if (nameLower.includes('zahlung') || nameLower.includes('payment') || 
+              nameLower.includes('receipt') || nameLower.includes('beleg')) {
+            return {
+              type: 'payment',
+              source: 'Zahlungseingang',
+              category: 'Unkategorisiert',
+              icon: '💳'
+            };
+          }
+          
+          return {
+            type: 'unknown',
+            source: 'PDF Dokument',
+            category: 'Unkategorisiert',
+            icon: '📄'
+          };
+        };
+        
+        const handleFileSelect = async (e) => {
+          const selectedFile = e.target.files?.[0];
+          if (!selectedFile) return;
+          
+          setFile(selectedFile);
+          const isPDF = selectedFile.name.toLowerCase().endsWith('.pdf');
+          setUploadType(isPDF ? 'pdf' : 'csv');
+          setStatus('uploading');
+          
+          // Simulate upload progress
+          let p = 0;
+          const interval = setInterval(() => {
+            p += 10;
+            setProgress(p);
+            if (p >= 100) {
+              clearInterval(interval);
+              setStatus('processing');
+              
+              // === HANDLE PDF FILES ===
+              if (selectedFile.name.toLowerCase().endsWith('.pdf')) {
+                extractPDFText(selectedFile).then(pdfData => {
+                  const analysis = analyzePDF(selectedFile.name, '');
+                  
+                  const pdfRecord = {
+                    fileName: selectedFile.name,
+                    uploadDate: new Date().toISOString(),
+                    size: selectedFile.size,
+                    type: analysis.type,
+                    source: analysis.source,
+                    category: analysis.category,
+                    icon: analysis.icon
+                  };
+                  
+                  // Load existing PDFs
+                  const existingPDFs = loadFromStorage('finwing.imported.pdfs', []);
+                  existingPDFs.push(pdfRecord);
+                  saveToStorage('finwing.imported.pdfs', existingPDFs);
+                  
+                  setPreviewData([pdfRecord]);
+                  setDetectedType('pdf-' + analysis.type);
+                  
+                  setTimeout(() => {
+                    setStatus('success');
+                    if (onImport) {
+                      onImport('pdf', [pdfRecord], [pdfRecord]);
+                    }
+                  }, 800);
+                });
+                return;
+              }
+              
+              // === HANDLE CSV FILES ===
+              const reader = new FileReader();
+              reader.onload = (evt) => {
+                const text = evt.target.result;
+                const rows = parseCSV(text);
+                
+                if (rows.length === 0) {
+                  setStatus('idle');
+                  alert('CSV-Datei ist leer oder konnte nicht geparst werden');
+                  return;
+                }
+                
+                const headers = Object.keys(rows[0]);
+                const csvType = detectCSVType(headers);
+                setDetectedType(csvType);
+                
+                let processedData = [];
+                
+                // === BANK CSV ===
+                if (csvType === 'bank') {
+                  const suppliers = {};
+                  rows.forEach(row => {
+                    const supplierField = row['Name Zahlungsbeteiligter'] || row['Empfänger'] || row['Payee'] || row['Beneficiary'] || row['Verwendungszweck'] || '';
+                    const amountField = row['Betrag'] || row['Amount'] || row['Umsatz'] || row['Buchungsbetrag'] || '0';
+                    
+                    if (supplierField) {
+                      const amount = parseFloat(amountField.replace(',', '.').replace(/[^0-9.-]/g, '')) || 0;
+                      
+                      if (!suppliers[supplierField]) {
+                        suppliers[supplierField] = {
+                          name: supplierField,
+                          count: 0,
+                          total: 0,
+                          category: categorizeSupplier(supplierField)
+                        };
+                      }
+                      suppliers[supplierField].count++;
+                      suppliers[supplierField].total += amount;
+                    }
+                  });
+                  
+                  processedData = Object.values(suppliers)
+                    .sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
+                    .slice(0, 100);
+                }
+                
+                // === POS/KASSE CSV ===
+                else if (csvType === 'pos') {
+                  const articles = {};
+                  rows.forEach(row => {
+                    const articleField = row['Artikel'] || row['Artikelname'] || row['Product'] || row['Item'] || '';
+                    const qtyField = row['Menge'] || row['Quantity'] || row['Anzahl'] || '1';
+                    const priceField = row['Preis'] || row['Price'] || row['Einzelpreis'] || '0';
+                    const totalField = row['Gesamt'] || row['Total'] || row['Summe'] || '0';
+                    
+                    if (articleField) {
+                      const qty = parseFloat(qtyField.replace(',', '.')) || 1;
+                      const price = parseFloat(priceField.replace(',', '.').replace(/[^0-9.-]/g, '')) || 0;
+                      const total = parseFloat(totalField.replace(',', '.').replace(/[^0-9.-]/g, '')) || (price * qty);
+                      
+                      if (!articles[articleField]) {
+                        articles[articleField] = {
+                          name: articleField,
+                          count: 0,
+                          qty: 0,
+                          revenue: 0,
+                          category: 'Artikel'
+                        };
+                      }
+                      articles[articleField].count++;
+                      articles[articleField].qty += qty;
+                      articles[articleField].revenue += total;
+                    }
+                  });
+                  
+                  processedData = Object.values(articles)
+                    .sort((a, b) => b.revenue - a.revenue)
+                    .slice(0, 100);
+                }
+                
+                // === LIEFERANTEN CSV ===
+                else if (csvType === 'invoices') {
+                  const vendors = {};
+                  rows.forEach(row => {
+                    const vendorField = row['Lieferant'] || row['Vendor'] || row['Supplier'] || row['Firma'] || '';
+                    const amountField = row['Betrag'] || row['Amount'] || row['Rechnungsbetrag'] || row['Total'] || '0';
+                    const invoiceField = row['Rechnungsnummer'] || row['Invoice'] || row['Rechnungs-Nr'] || '';
+                    
+                    if (vendorField) {
+                      const amount = parseFloat(amountField.replace(',', '.').replace(/[^0-9.-]/g, '')) || 0;
+                      
+                      if (!vendors[vendorField]) {
+                        vendors[vendorField] = {
+                          name: vendorField,
+                          count: 0,
+                          total: 0,
+                          category: categorizeSupplier(vendorField)
+                        };
+                      }
+                      vendors[vendorField].count++;
+                      vendors[vendorField].total += amount;
+                    }
+                  });
+                  
+                  processedData = Object.values(vendors)
+                    .sort((a, b) => b.total - a.total)
+                    .slice(0, 100);
+                }
+                
+                setPreviewData(processedData);
+                
+                // Save to localStorage
+                saveToStorage('finwing.imported.transactions', rows);
+                saveToStorage('finwing.imported.processed', processedData);
+                saveToStorage('finwing.imported.type', csvType);
+                
+                setTimeout(() => {
+                  setStatus('success');
+                  if (onImport) {
+                    onImport(csvType, rows, processedData);
+                  }
+                }, 800);
+              };
+              reader.readAsText(selectedFile);
+            }
+          }, 150);
+        };
+        
+        return (
+          <div className="fixed inset-0 z-[100] bg-[#050505] flex flex-col animate-in">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+              <div><h2 className="text-2xl font-black text-white flex items-center gap-2"><Icon name="Upload" className="text-emerald-400"/> Daten importieren</h2><p className="text-xs text-slate-500 mt-1">Bank • Kasse • Lieferanten</p></div>
+              <button onClick={onClose} className="p-2 bg-slate-800 rounded-full hover:bg-slate-700 transition-colors"><Icon name="X" size={20} className="text-slate-400"/></button>
+            </div>
+            
+            <div className="flex-1 p-6 flex flex-col overflow-auto">
+              {status==='idle'&&(
+                <>
+                  <label className="flex-1 border-2 border-dashed border-slate-700 hover:border-slate-600 bg-slate-900/30 rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-colors">
+                    <input type="file" accept=".csv,.pdf" onChange={handleFileSelect} className="hidden" />
+                    <div className="w-20 h-20 rounded-2xl bg-slate-800 flex items-center justify-center mb-4"><Icon name="Upload" size={36} className="text-slate-500"/></div>
+                    <p className="text-white font-bold text-lg mb-1">CSV oder PDF hochladen</p>
+                    <p className="text-slate-500 text-sm mb-4">Bank • Kasse • Lieferanten • Zahlungsbelege</p>
+                    <div className="flex gap-2 flex-wrap justify-center">
+                      <span className="px-3 py-1.5 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400">📊 CSV: Sparkasse • N26 • orderbird</span>
+                      <span className="px-3 py-1.5 bg-orange-800 rounded-lg text-[10px] font-bold text-orange-400">📄 PDF: Uber • Catering • Belege</span>
+                    </div>
+                  </label>
+                  <div className="mt-6 p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+                    <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2"><Icon name="Zap" size={14} className="text-indigo-400"/> Automatische Erkennung</h4>
+                    <p className="text-xs text-slate-400">Die App erkennt automatisch CSV-Typen (Bank, Kasse, Lieferanten) und PDF-Belege (Uber, Catering).</p>
+                  </div>
+                </>
+              )}
+              
+              {status==='uploading'&&(
+                <div className="flex-1 flex flex-col items-center justify-center">
+                  <div className="w-full max-w-sm">
+                    <div className="flex items-center gap-3 mb-4"><Icon name="FileSpreadsheet" size={24} className="text-emerald-400"/><div className="flex-1"><p className="text-white font-bold">{file?.name}</p><p className="text-slate-500 text-xs">{(file?.size / 1024).toFixed(1)} KB</p></div></div>
+                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all" style={{width:progress+'%'}}/></div>
+                    <p className="text-center text-slate-500 text-sm mt-3">{progress}%</p>
+                  </div>
+                </div>
+              )}
+              
+              {status==='processing'&&(<div className="flex-1 flex flex-col items-center justify-center"><Icon name="BrainCircuit" size={64} className="text-indigo-400 animate-pulse mb-4"/><p className="text-white font-bold text-lg">Analysiere & kategorisiere...</p></div>)}
+              
+              {status==='success'&&(
+                <div className="flex-1 flex flex-col items-center justify-center">
+                  <div className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4"><Icon name="CheckCircle2" size={40} className="text-emerald-400"/></div>
+                  <p className="text-white font-bold text-xl">Import erfolgreich!</p>
+                  <p className="text-slate-500 text-sm mt-1">
+                    {detectedType === 'bank' && `${previewData.length} Lieferanten erkannt`}
+                    {detectedType === 'pos' && `${previewData.length} Artikel analysiert`}
+                    {detectedType === 'invoices' && `${previewData.length} Lieferanten-Rechnungen`}
+                    {detectedType?.startsWith('pdf-') && `PDF-Beleg gespeichert`}
+                  </p>
+                  <div className="flex gap-2 mt-4">
+                    <span className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-bold text-emerald-400">
+                      {detectedType === 'bank' && '💳 Bank-CSV'}
+                      {detectedType === 'pos' && '🛍️ Kassen-CSV'}
+                      {detectedType === 'invoices' && '📄 Lieferanten-CSV'}
+                      {detectedType === 'pdf-uber' && '🚗 Uber-Beleg'}
+                      {detectedType === 'pdf-catering' && '🍽️ Catering-Rechnung'}
+                      {detectedType === 'pdf-payment' && '💳 Zahlungsbeleg'}
+                      {detectedType === 'pdf-unknown' && '📄 PDF-Dokument'}
+                    </span>
+                    <span className="px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-xs font-bold text-indigo-400">In LocalStorage</span>
+                  </div>
+                  {uploadType === 'pdf' && previewData[0] && (
+                    <div className="mt-4 p-4 bg-slate-900/50 rounded-xl border border-slate-800 max-w-md">
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl">{previewData[0].icon}</span>
+                        <div className="flex-1">
+                          <p className="text-white font-bold text-sm">{previewData[0].fileName}</p>
+                          <p className="text-slate-400 text-xs mt-1">Kategorie: {previewData[0].category}</p>
+                          <p className="text-slate-500 text-xs">{(previewData[0].size / 1024).toFixed(1)} KB</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <button onClick={onClose} className="mt-6 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-colors">Weiter zum Dashboard</button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+                  }
+                });
+                
+                const supplierList = Object.values(suppliers)
+                  .sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
+                  .slice(0, 50);
+                
+                setPreviewData(supplierList);
+                
+                // Save to localStorage
+                saveToStorage('finwing.imported.transactions', rows);
+                saveToStorage('finwing.imported.suppliers', supplierList);
+                
+                setTimeout(() => {
+                  setStatus('success');
+                  if (onImport) {
+                    onImport('bank', rows, supplierList);
+                  }
+                }, 800);
+              };
+              reader.readAsText(selectedFile);
+            }
+          }, 150);
+        };
+        
+        return (
+          <div className="fixed inset-0 z-[100] bg-[#050505] flex flex-col animate-in">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+              <div><h2 className="text-2xl font-black text-white flex items-center gap-2"><Icon name="Upload" className="text-emerald-400"/> Daten importieren</h2><p className="text-xs text-slate-500 mt-1">CSV von Bank oder Kassensystem</p></div>
+              <button onClick={onClose} className="p-2 bg-slate-800 rounded-full hover:bg-slate-700 transition-colors"><Icon name="X" size={20} className="text-slate-400"/></button>
+            </div>
+            
+            <div className="flex-1 p-6 flex flex-col overflow-auto">
+              {status==='idle'&&(
+                <>
+                  <label className="flex-1 border-2 border-dashed border-slate-700 hover:border-slate-600 bg-slate-900/30 rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-colors">
+                    <input type="file" accept=".csv" onChange={handleFileSelect} className="hidden" />
+                    <div className="w-20 h-20 rounded-2xl bg-slate-800 flex items-center justify-center mb-4"><Icon name="Upload" size={36} className="text-slate-500"/></div>
+                    <p className="text-white font-bold text-lg mb-1">CSV-Datei auswählen</p>
+                    <p className="text-slate-500 text-sm mb-4">Kontoauszug von deiner Bank</p>
+                    <div className="flex gap-2">
+                      <span className="px-3 py-1.5 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400 flex items-center gap-1.5"><Icon name="FileSpreadsheet" size={12}/> CSV</span>
+                    </div>
+                  </label>
+                  <div className="mt-6 p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+                    <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2"><Icon name="Zap" size={14} className="text-indigo-400"/> Auto-Kategorisierung</h4>
+                    <p className="text-xs text-slate-400">Lieferanten werden automatisch erkannt und kategorisiert.</p>
+                  </div>
+                </>
+              )}
+              
+              {status==='uploading'&&(
+                <div className="flex-1 flex flex-col items-center justify-center">
+                  <div className="w-full max-w-sm">
+                    <div className="flex items-center gap-3 mb-4"><Icon name="FileSpreadsheet" size={24} className="text-emerald-400"/><div className="flex-1"><p className="text-white font-bold">{file?.name}</p><p className="text-slate-500 text-xs">{(file?.size / 1024).toFixed(1)} KB</p></div></div>
+                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all" style={{width:progress+'%'}}/></div>
+                    <p className="text-center text-slate-500 text-sm mt-3">{progress}%</p>
+                  </div>
+                </div>
+              )}
+              
+              {status==='processing'&&(<div className="flex-1 flex flex-col items-center justify-center"><Icon name="BrainCircuit" size={64} className="text-indigo-400 animate-pulse mb-4"/><p className="text-white font-bold text-lg">Analysiere & kategorisiere...</p></div>)}
+              
+              {status==='success'&&(
+                <div className="flex-1 flex flex-col items-center justify-center">
+                  <div className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4"><Icon name="CheckCircle2" size={40} className="text-emerald-400"/></div>
+                  <p className="text-white font-bold text-xl">Import erfolgreich!</p>
+                  <p className="text-slate-500 text-sm mt-1">{previewData.length} Lieferanten kategorisiert</p>
+                  <div className="flex gap-2 mt-4">
+                    <span className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-bold text-emerald-400">In LocalStorage gespeichert</span>
+                  </div>
+                  <button onClick={onClose} className="mt-6 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-colors">Weiter zum Dashboard</button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      // === SETTINGS VIEW ===
+      const SettingsView = ({ onClose, currentLlm, onLlmChange }) => {
+        const llms = [{id:'Gemini',label:'Google Gemini',desc:'Schnell',icon:'Zap'},{id:'Claude',label:'Anthropic Claude',desc:'Präzise',icon:'BrainCircuit'},{id:'OpenAI',label:'OpenAI GPT-4',desc:'Kreativ',icon:'Sparkles'}];
+        return (
+          <div className="fixed inset-0 z-[100] bg-[#050505] flex flex-col animate-in">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+              <h2 className="text-2xl font-black text-white flex items-center gap-2"><Icon name="Settings" className="text-slate-400"/> Einstellungen</h2>
+              <button onClick={onClose} className="p-2 bg-slate-800 rounded-full hover:bg-slate-700 transition-colors"><Icon name="X" className="text-slate-400" size={20}/></button>
+            </div>
+            <div className="flex-1 p-6 space-y-6 overflow-y-auto pb-24">
+              <div className="bg-[#141824] p-6 rounded-2xl border border-slate-800">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-2"><Icon name="BrainCircuit" className="text-indigo-400"/> KI-Engine</h3>
+                <p className="text-sm text-slate-400 mb-4">Wähle die Analyse-Engine.</p>
+                <div className="space-y-2">
+                  {llms.map(e=>(
+                    <button key={e.id} onClick={()=>onLlmChange(e.id)} className={'w-full p-4 rounded-xl text-left border-2 transition-all '+(currentLlm===e.id?'bg-indigo-500/10 border-indigo-500/50':'bg-slate-800/50 border-slate-700 hover:border-slate-600')}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={'w-10 h-10 rounded-lg flex items-center justify-center '+(currentLlm===e.id?'bg-indigo-500/20':'bg-slate-700')}><Icon name={e.icon} size={18} className={currentLlm===e.id?'text-indigo-400':'text-slate-400'}/></div>
+                          <div><div className="font-bold text-white">{e.label}</div><div className="text-xs text-slate-500">{e.desc}</div></div>
+                        </div>
+                        {currentLlm===e.id&&<Icon name="CheckCircle2" size={20} className="text-indigo-400"/>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-[#141824] p-6 rounded-2xl border border-slate-800">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4"><Icon name="Bell" className="text-orange-400"/> Benachrichtigungen</h3>
+                <div className="space-y-3">
+                  {[{label:'Anomalie-Warnungen',desc:'Bei ungewöhnlichen Ausgaben',on:true},{label:'Wöchentlicher Report',desc:'Montag per E-Mail',on:false},{label:'Mission-Reminder',desc:'Erinnerung an Tasks',on:true}].map((n,i)=>(
+                    <div key={i} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-xl">
+                      <div><div className="text-sm font-bold text-white">{n.label}</div><div className="text-[10px] text-slate-500">{n.desc}</div></div>
+                      <div className={'w-10 h-6 rounded-full p-1 cursor-pointer transition-colors '+(n.on?'bg-emerald-500':'bg-slate-700')}><div className={'w-4 h-4 rounded-full bg-white transition-transform '+(n.on?'translate-x-4':'')}/></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // === DETAIL MODAL ===
+      const DetailModal = ({ type, onClose, onCreateMission }) => {
+        const finding = DATA_CONFIG.allFindings.find(f=>f.id===type);
+        if(!finding) return null;
+        return (
+          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in">
+            <div className="bg-[#121218] w-full max-w-md rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
+              <div className="p-6 border-b border-slate-800 bg-gradient-to-br from-red-500/10 to-transparent">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center"><Icon name="TrendingUp" size={24} className="text-red-400"/></div>
+                    <div><span className="text-[10px] font-bold text-red-400 uppercase">Preisanstieg</span><h3 className="text-xl font-bold text-white">{finding.title}</h3></div>
+                  </div>
+                  <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors"><Icon name="X" className="text-slate-400" size={20}/></button>
+                </div>
+              </div>
+              <div className="p-6 space-y-5">
+                <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-xl"><span className="text-sm text-slate-400">Impact</span><span className="text-xl font-black text-red-400">{finding.impact}</span></div>
+                <div><h4 className="text-sm font-bold text-white mb-2">Details</h4><p className="text-sm text-slate-400">{finding.desc}</p></div>
+                <div><h4 className="text-sm font-bold text-white mb-2">Kategorie</h4><span className="px-3 py-1.5 bg-slate-800 rounded-lg text-xs font-bold text-slate-300">{finding.category}</span></div>
+                <div className="pt-4 border-t border-slate-800 space-y-2">
+                  <button onClick={()=>{onCreateMission({title:finding.title,category:finding.category,impact:finding.impact.replace('-',''),desc:finding.desc,status:'active'});onClose();}} className="w-full py-3.5 bg-white text-black rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors"><Icon name="Plus" size={18} strokeWidth={3}/> Als Mission annehmen</button>
+                  <button onClick={onClose} className="w-full py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-colors">Später</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // === FLOW VIEW (MONEY FLOW) ===
+      const FlowView = ({ onCreateMission, onLlmRequest }) => {
+        const [drillDown, setDrillDown] = useState(null);
+        const [aiInsight, setAiInsight] = useState(null);
+        const [isAnalyzing, setIsAnalyzing] = useState(false);
+      
+        const revenues = DATA_CONFIG.revenues;
+        const costs = DATA_CONFIG.costs;
+        const totalRev = revenues.reduce((s,r)=>s+r.value,0);
+        const totalCost = costs.reduce((s,c)=>s+c.value,0);
+        const profit = totalRev - totalCost;
+      
+        const handleAnalyze = async () => {
+          setIsAnalyzing(true);
+          try {
+            const r = await onLlmRequest("ANALYZE_FLOW", {});
+            setAiInsight(r.aiResponse);
+          } catch(e) { setAiInsight("Analyse fehlgeschlagen."); }
+          finally { setIsAnalyzing(false); }
+        };
+      
+        // Drill Down View
+        if (drillDown) {
+          const dd = DATA_CONFIG.drillDowns[drillDown];
+          if (!dd) { setDrillDown(null); return null; }
+          return (
+            <div className="space-y-6 pb-24 animate-in">
+              <div className="flex items-center gap-4">
+                <button onClick={()=>setDrillDown(null)} className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700"><Icon name="ArrowLeft" size={20} className="text-white"/></button>
+                <div><h2 className="text-xl font-black text-white">{dd.title}</h2><p className="text-xs text-slate-400">Dezember 2024</p></div>
+              </div>
+              <div className="bg-[#141824] rounded-2xl border border-slate-800 overflow-hidden">
+                <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-slate-800/50 text-[9px] font-bold text-slate-400 uppercase">
+                  <div className="col-span-5">Artikel</div>
+                  <div className="col-span-2 text-right">Menge</div>
+                  <div className="col-span-3 text-right">{dd.isCost?'Kosten':'Umsatz'}</div>
+                  <div className="col-span-2 text-right">vs. VJ</div>
+                </div>
+                {dd.items.map((item,idx)=>(
+                  <div key={idx} className="grid grid-cols-12 gap-2 px-4 py-3 border-t border-slate-800/50 hover:bg-slate-800/30 items-center">
+                    <div className="col-span-5 flex items-center gap-2">
+                      {item.status==='star'&&<Icon name="Star" size={14} className="text-yellow-400" fill="currentColor"/>}
+                      {item.status==='danger'&&<Icon name="AlertTriangle" size={14} className="text-red-400"/>}
+                      {item.status==='warning'&&<Icon name="AlertCircle" size={14} className="text-orange-400"/>}
+                      {item.status==='ok'&&<Icon name="CheckCircle2" size={14} className="text-emerald-400"/>}
+                      <span className="text-sm text-white truncate">{item.name}</span>
+                    </div>
+                    <div className="col-span-2 text-right text-xs text-slate-400 font-mono">{item.amount} {item.unit}</div>
+                    <div className="col-span-3 text-right text-sm text-white font-bold font-mono">{formatEuro(item.total)}</div>
+                    <div className={'col-span-2 text-right text-xs font-bold '+(item.trend>=0?'text-emerald-400':'text-red-400')}>{formatPercent(item.trend)}</div>
+                  </div>
+                ))}
+              </div>
+              {dd.insight&&(
+                <div className={'rounded-2xl border p-5 '+(dd.insight.type==='success'?'border-emerald-500/30 bg-emerald-500/5':dd.insight.type==='danger'?'border-red-500/30 bg-red-500/5':'border-orange-500/30 bg-orange-500/5')}>
+                  <div className="flex items-start gap-3">
+                    <div className={'w-10 h-10 rounded-xl flex items-center justify-center '+(dd.insight.type==='success'?'bg-emerald-500/20':dd.insight.type==='danger'?'bg-red-500/20':'bg-orange-500/20')}>
+                      <Icon name="Lightbulb" size={20} className={dd.insight.type==='success'?'text-emerald-400':dd.insight.type==='danger'?'text-red-400':'text-orange-400'}/>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-white font-bold mb-1">{dd.insight.title}</h4>
+                      <p className="text-sm text-slate-400 mb-4">{dd.insight.text}</p>
+                      {dd.insight.action&&<button onClick={()=>{onCreateMission({title:dd.insight.action,category:drillDown,impact:'250 EUR',desc:dd.insight.text});setDrillDown(null);}} className="px-4 py-2 bg-white text-black rounded-lg text-xs font-bold hover:bg-slate-100 flex items-center gap-2"><Icon name="Plus" size={14} strokeWidth={3}/>{dd.insight.action}</button>}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <button className="w-full py-3 bg-slate-800 rounded-xl text-sm font-bold text-slate-300 flex items-center justify-center gap-2 hover:bg-slate-700"><Icon name="FileSpreadsheet" size={16}/> Als Excel exportieren</button>
+            </div>
+          );
+        }
+      
+        // Main Flow View
+        return (
+          <div className="space-y-6 pb-24 animate-in">
+            <div className="flex justify-between items-end">
+              <div><h2 className="text-2xl font-black text-white flex items-center gap-2"><Icon name="ArrowRightLeft" size={24} className="text-emerald-400"/> Geldfluss</h2><p className="text-xs text-slate-400 mt-1">Woher kommt's, wohin geht's?</p></div>
+            </div>
+          
+            {/* Revenue Section */}
+            <div className="bg-[#141824] rounded-2xl border border-slate-800 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2"><Icon name="TrendingUp" size={14} className="text-emerald-400"/> Einnahmen</h3>
+                <span className="text-lg font-black text-emerald-400">{formatEuro(totalRev)}</span>
+              </div>
+              <div className="space-y-2">
+                {revenues.map(rev=>(
+                  <div key={rev.id} onClick={()=>setDrillDown(rev.id)} className="group flex items-center gap-3 p-3 rounded-xl bg-slate-800/30 hover:bg-slate-800/60 cursor-pointer transition-all">
+                    <div className="w-3 h-10 rounded-full" style={{backgroundColor:rev.color}}/>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-white font-bold">{rev.label}</span>
+                        <span className="text-white font-mono">{formatEuro(rev.value)}</span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <div className="h-1.5 flex-1 bg-slate-700 rounded-full mr-3 overflow-hidden">
+                          <div className="h-full rounded-full transition-all" style={{width:(rev.value/totalRev*100)+'%',backgroundColor:rev.color}}/>
+                        </div>
+                        <span className={'text-[10px] font-bold '+(rev.trend>=0?'text-emerald-400':'text-red-400')}>{formatPercent(rev.trend)}</span>
+                      </div>
+                    </div>
+                    {rev.hasAlert&&<div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center animate-pulse"><Icon name="AlertCircle" size={14} className="text-red-400"/></div>}
+                    <Icon name="ChevronRight" size={16} className="text-slate-600 group-hover:text-white transition-colors"/>
+                  </div>
+                ))}
+              </div>
+            </div>
+          
+            {/* Center Arrow */}
+            <div className="flex justify-center"><div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center"><Icon name="ArrowDown" size={24} className="text-slate-400"/></div></div>
+          
+            {/* Costs Section */}
+            <div className="bg-[#141824] rounded-2xl border border-slate-800 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2"><Icon name="TrendingDown" size={14} className="text-red-400"/> Ausgaben</h3>
+                <span className="text-lg font-black text-red-400">-{formatEuro(totalCost)}</span>
+              </div>
+              <div className="space-y-2">
+                {costs.map(cost=>(
+                  <div key={cost.id} onClick={()=>setDrillDown(cost.id)} className="group flex items-center gap-3 p-3 rounded-xl bg-slate-800/30 hover:bg-slate-800/60 cursor-pointer transition-all">
+                    <div className="w-3 h-10 rounded-full" style={{backgroundColor:cost.color}}/>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-white font-bold">{cost.label}</span>
+                        <span className="text-white font-mono">-{formatEuro(cost.value)}</span>
+                      </div>
+                      <div className="h-1.5 bg-slate-700 rounded-full mt-2 overflow-hidden">
+                        <div className="h-full rounded-full" style={{width:(cost.value/totalCost*100)+'%',backgroundColor:cost.color}}/>
+                      </div>
+                    </div>
+                    <Icon name="ChevronRight" size={16} className="text-slate-600 group-hover:text-white transition-colors"/>
+                  </div>
+                ))}
+              </div>
+            </div>
+          
+            {/* Profit Box */}
+            <div onClick={()=>setDrillDown('profit')} className="cursor-pointer group bg-gradient-to-br from-emerald-500/20 to-emerald-900/20 rounded-2xl border border-emerald-500/30 p-6 hover:border-emerald-500/60 transition-all">
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-[10px] font-bold text-emerald-400 uppercase mb-1">Gewinn</div>
+                  <div className="text-3xl font-black text-white">{formatEuro(profit)}</div>
+                  <div className="text-xs text-slate-400 mt-1">Marge: {((profit/totalRev)*100).toFixed(1)}%</div>
+                </div>
+                <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Icon name="TrendingUp" size={32} className="text-emerald-400"/>
+                </div>
+              </div>
+            </div>
+          
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-[#141824] rounded-xl p-4 border border-slate-800 text-center">
+                <div className="text-[9px] text-slate-500 font-bold uppercase mb-1">Top</div>
+                <div className="text-sm font-bold text-emerald-400">Speisen</div>
+              </div>
+              <div className="bg-[#141824] rounded-xl p-4 border border-slate-800 text-center">
+                <div className="text-[9px] text-slate-500 font-bold uppercase mb-1">Alarm</div>
+                <div className="text-sm font-bold text-red-400">Catering</div>
+              </div>
+              <div className="bg-[#141824] rounded-xl p-4 border border-slate-800 text-center">
+                <div className="text-[9px] text-slate-500 font-bold uppercase mb-1">Trend</div>
+                <div className="text-sm font-bold text-emerald-400">+8.5%</div>
+              </div>
+            </div>
+          
+            {/* AI Analyze Button */}
+            <button onClick={handleAnalyze} disabled={isAnalyzing} className="w-full py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-xl font-bold text-white flex items-center justify-center gap-2 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-50 shadow-lg shadow-indigo-500/20">
+              {isAnalyzing?<><Icon name="Loader" size={18} className="animate-spin"/> Analysiere...</>:<><Icon name="BrainCircuit" size={18}/> KI-Analyse starten</>}
+            </button>
+          
+            {aiInsight&&<div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4 animate-in"><div className="flex items-start gap-3"><div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0"><Icon name="Lightbulb" size={16} className="text-indigo-400"/></div><div><div className="text-[10px] text-indigo-400 font-bold uppercase mb-1">KI-Insight</div><p className="text-sm text-slate-300">{aiInsight}</p></div></div></div>}
+          
+            <p className="text-center text-[10px] text-slate-600">Tippe auf Kategorien für Details</p>
+          </div>
+        );
+      };
+
+      // === SANDBOX VIEW ===
+      const SandboxView = ({ onCreateMission, data, onLlmRequest }) => {
+        const [scope, setScope] = useState('global');
+        const [params, setParams] = useState({price:0,volume:0,efficiency:0});
+        const [input, setInput] = useState("");
+        const [aiMsg, setAiMsg] = useState(null);
+        const [isThinking, setIsThinking] = useState(false);
+      
+        const getBase = useCallback(()=>{
+          if(scope==='global')return{rev:data.revenue,cost:Object.values(data.costs||{}).reduce((a,b)=>a+b,0),label:"Gesamtbetrieb"};
+          if(scope==='food')return{rev:22000,cost:14500*0.6,label:"Speisen"};
+          if(scope==='drinks')return{rev:18500,cost:14500*0.4,label:"Getränke"};
+          return{rev:35700,cost:35700*0.25,label:"Pizza Margherita"};
+        },[scope,data]);
+      
+        const base = getBase();
+        const baseProfit = base.rev - base.cost;
+        const newRev = base.rev*(1+params.price/100)*(1+params.volume/100);
+        const newCost = base.cost*(1+params.volume/100)*(1-params.efficiency/100);
+        const newProfit = newRev - newCost;
+        const delta = newProfit - baseProfit;
+        const reset = ()=>setParams({price:0,volume:0,efficiency:0});
+      
+        const handleAsk = async(e)=>{
+          e.preventDefault();
+          if(!input.trim())return;
+          setIsThinking(true);
+          setAiMsg(null);
+          try{const r=await onLlmRequest(input,params);setAiMsg(r.aiResponse);}catch(err){setAiMsg("Fehler");}finally{setIsThinking(false);setInput("");}
+        };
+      
+        return (
+          <div className="space-y-6 pb-24 animate-in">
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-end">
+                <div><h2 className="text-2xl font-black text-white flex items-center gap-2"><Icon name="Sparkles" className="text-indigo-400"/> Sandbox</h2><p className="text-xs text-slate-400 mt-1">Simulation auf Artikelebene.</p></div>
+                <button onClick={reset} className="text-xs font-bold text-slate-500 hover:text-white flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-slate-800 transition-colors"><Icon name="RotateCcw" size={12}/> Reset</button>
+              </div>
+              <div className="bg-[#0a0d14] p-1 rounded-xl border border-slate-800 flex overflow-x-auto">
+                <button onClick={()=>setScope('global')} className={'flex-1 min-w-[80px] py-2 px-3 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap flex items-center justify-center gap-1 transition-colors '+(scope==='global'?'bg-indigo-600 text-white':'text-slate-500 hover:text-white')}><Icon name="Layers" size={12}/> Gesamt</button>
+                <button onClick={()=>setScope('food')} className={'flex-1 min-w-[80px] py-2 px-3 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap flex items-center justify-center gap-1 transition-colors '+(scope==='food'?'bg-indigo-600 text-white':'text-slate-500 hover:text-white')}><Icon name="Utensils" size={12}/> Speisen</button>
+                <button onClick={()=>setScope('drinks')} className={'flex-1 min-w-[80px] py-2 px-3 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap flex items-center justify-center gap-1 transition-colors '+(scope==='drinks'?'bg-indigo-600 text-white':'text-slate-500 hover=text-white')}><Icon name="Coffee" size={12}/> Getränke</button>
+                <button onClick={()=>setScope('top-item')} className={'flex-1 min-w-[100px] py-2 px-3 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap flex items-center justify-center gap-1 transition-colors '+(scope==='top-item'?'bg-orange-500 text-white':'text-slate-500 hover:text-white')}><Icon name="Star" size={12}/> Pizza</button>
+              </div>
+            </div>
+          
+            <div className="bg-[#141824] p-6 rounded-3xl border border-slate-800 shadow-xl space-y-8">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-4"><span className="text-xs font-bold text-slate-500 uppercase">Fokus: <span className="text-white">{base.label}</span></span><span className="text-xs font-mono text-slate-600">Basis: {formatEuro(base.rev)}</span></div>
+              <div>
+                <div className="flex justify-between text-xs font-bold mb-3"><span className="text-slate-400 flex items-center gap-2"><Icon name="TrendingUp" size={14}/> Preis</span><span className={'px-2 py-0.5 rounded '+(params.price>0?'bg-emerald-500/20 text-emerald-400':params.price<0?'bg-red-500/20 text-red-400':'bg-slate-800 text-white')}>{params.price>0?'+':''}{params.price}%</span></div>
+                <input type="range" min="-20" max="30" value={params.price} onChange={e=>setParams({...params,price:parseInt(e.target.value)})} className="w-full"/>
+                <div className="flex justify-between text-[10px] text-slate-600 mt-1"><span>-20%</span><span>0%</span><span>+30%</span></div>
+              </div>
+              <div>
+                <div className="flex justify-between text-xs font-bold mb-3"><span className="text-slate-400 flex items-center gap-2"><Icon name="Briefcase" size={14}/> Menge</span><span className={'px-2 py-0.5 rounded '+(params.volume>0?'bg-emerald-500/20 text-emerald-400':params.volume<0?'bg-red-500/20 text-red-400':'bg-slate-800 text-white')}>{params.volume>0?'+':''}{params.volume}%</span></div>
+                <input type="range" min="-30" max="30" value={params.volume} onChange={e=>setParams({...params,volume:parseInt(e.target.value)})} className="w-full"/>
+                <p className="text-[10px] text-slate-500 mt-2 italic">* Volumen steigert auch Wareneinsatz.</p>
+              </div>
+              <div>
+                <div className="flex justify-between text-xs font-bold mb-3"><span className="text-slate-400 flex items-center gap-2"><Icon name="Scissors" size={14}/> Effizienz</span><span className={'px-2 py-0.5 rounded '+(params.efficiency>0?'bg-emerald-500/20 text-emerald-400':params.efficiency<0?'bg-red-500/20 text-red-400':'bg-slate-800 text-white')}>{params.efficiency>0?'Sparen: ':params.efficiency<0?'Teurer: ':''}{Math.abs(params.efficiency)}%</span></div>
+                <input type="range" min="-10" max="20" value={params.efficiency} onChange={e=>setParams({...params,efficiency:parseInt(e.target.value)})} className="w-full"/>
+                <div className="flex justify-between text-[10px] text-slate-600 mt-1"><span>Teurer</span><span>0%</span><span>Günstiger</span></div>
+              </div>
+            </div>
+          
+            <div className={'p-6 rounded-3xl border-t-4 shadow-2xl relative overflow-hidden transition-all '+(delta>=0?'bg-slate-900 border-t-emerald-500':'bg-slate-900 border-t-red-500')}>
+              <div className="relative z-10 flex justify-between items-center">
+                <div><div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Gewinn-Effekt</div><div className="text-2xl font-black text-white">{formatEuro(newProfit)}</div><div className="text-xs text-slate-600">Basis: {formatEuro(baseProfit)}</div></div>
+                <div className="text-right"><div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Delta</div><div className={'text-3xl font-black '+(delta>=0?'text-emerald-400':'text-red-400')}>{delta>0?'+':''}{formatEuro(delta)}</div></div>
+              </div>
+              {Math.abs(delta)>100&&(<button onClick={()=>onCreateMission({title:'Szenario: '+base.label,category:"Strategie",impact:formatEuro(Math.abs(delta)),desc:'Preis '+params.price+'%, Volumen '+params.volume+'%, Effizienz '+params.efficiency+'%',status:'active'})} className="mt-6 w-full py-3 bg-white text-black font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors"><Icon name="Plus" size={16} strokeWidth={3}/> Als Mission speichern</button>)}
+            </div>
+          
+            <div className="relative mt-8">
+              {isThinking&&(<div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center rounded-xl z-20"><Icon name="Loader" size={24} className="text-indigo-400 animate-spin"/><span className="text-white text-sm ml-3">KI prüft...</span></div>)}
+              {aiMsg&&<div className="mb-3 p-4 rounded-xl text-sm border border-indigo-500/20 bg-indigo-500/5 text-white flex items-start gap-3"><Icon name="BrainCircuit" size={18} className="text-indigo-400 shrink-0 mt-0.5"/><p className="text-xs text-slate-300">{aiMsg}</p></div>}
+              <form onSubmit={handleAsk} className="relative">
+                <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Frag die KI: 'Ist 10% Preiserhöhung realistisch?'" className="w-full bg-[#0a0d14] border border-slate-700 rounded-xl px-4 py-3.5 pr-12 text-sm text-white placeholder:text-slate-600 focus:border-indigo-500 outline-none transition-colors"/>
+                <button type="submit" className="absolute right-2 top-2 p-2 bg-indigo-600 rounded-lg text-white disabled:opacity-50 hover:bg-indigo-500 transition-colors" disabled={isThinking}><Icon name="Send" size={16}/></button>
+              </form>
+            </div>
+          </div>
+        );
+      };
+
+      // === MAIN APP ===
+      function FinWingApp() {
+        const [view, setView] = useState("cockpit");
+        const [detailType, setDetailType] = useState(null);
+        const [xp, setXp] = useState(() => loadFromStorage('finwing.xp', 1250));
+        const [streak] = useState(7);
+        const [overlays, setOverlays] = useState({import:false,settings:false,report:false,findings:false,lightspeed:false});
+        const [isScanning, setIsScanning] = useState(true);
+        const [llmEngine, setLlmEngine] = useState('Gemini');
+        const [missions, setMissions] = useState(() => loadFromStorage('finwing.missions', [
+          {id:1,title:"Lieferant verhandeln",category:"Einkauf",impact:"420 EUR",frequency:"pro Monat",desc:"Mozzarella +12% (Müller GmbH).",color:"bg-purple-500/10 text-purple-400",status:'active'},
+          {id:2,title:"Preise optimieren",category:"Umsatz",impact:"650 EUR",frequency:"pro Monat",desc:"+3% auf Top-10 Bestseller.",color:"bg-emerald-500/10 text-emerald-400",status:'active'}
+        ]));
+        const [insights, setInsights] = useState(() => loadFromStorage('finwing.insights', []));
+        const [findings] = useState(DATA_CONFIG.allFindings);
+        const [data] = useState({cashBalance:45000,revenue:48500,plannedRevenue:52000,costs:{cogs:14500,personnel:16800,rent:8800,energy:1800,other:2500},upcomingPayments:[{amount:3250}]});
+        const [importedSuppliers, setImportedSuppliers] = useState(() => loadFromStorage('finwing.imported.suppliers', []));
+        const [importedTransactions, setImportedTransactions] = useState(() => loadFromStorage('finwing.imported.transactions', []));
+        
+        // Persist to localStorage
+        useEffect(() => { saveToStorage('finwing.xp', xp); }, [xp]);
+        useEffect(() => { saveToStorage('finwing.missions', missions); }, [missions]);
+        useEffect(() => { saveToStorage('finwing.insights', insights); }, [insights]);
+        
+        const handleImportData = useCallback((type, transactions, suppliers) => {
+          setImportedTransactions(transactions);
+          setImportedSuppliers(suppliers);
+          
+          // Generate insights from imported data
+          const newInsights = [
+            {type: 'success', title: 'Import erfolgreich', text: `${transactions.length} Transaktionen und ${suppliers.length} Lieferanten importiert.`}
+          ];
+          
+          // Find top suppliers
+          if (suppliers.length > 0) {
+            const top3 = suppliers.slice(0, 3);
+            newInsights.push({
+              type: 'info',
+              title: 'Top 3 Lieferanten',
+              text: top3.map(s => `${s.name}: ${new Intl.NumberFormat('de-DE', {style:'currency', currency:'EUR', maximumFractionDigits:0}).format(Math.abs(s.total))}`).join(', ')
+            });
+          }
+          
+          setInsights(prev => [...newInsights, ...prev]);
+        }, []);
+
+        const handleComplete = useCallback((id)=>{setMissions(prev=>prev.map(m=>m.id===id?{...m,status:'completed',result:m.impact}:m));setXp(p=>p+100);},[]);
+        const handleCreateMission = useCallback((s)=>{setMissions(prev=>[{id:Date.now(),title:s.title,category:s.category,impact:s.impact,frequency:s.frequency||"pro Monat",desc:s.desc||"Aus Simulation.",color:"bg-indigo-500/10 text-indigo-400",status:'active'},...prev]);setView("cockpit");},[]);
+        const handleActivateFinding = useCallback((f)=>{const m={id:Date.now(),title:f.title,category:f.category,impact:f.impact.replace('-',''),frequency:"pro Monat",desc:f.desc,color:"bg-blue-500/10 text-blue-400",status:'active'};setMissions(prev=>[m,...prev]);setOverlays(p=>({...p,findings:false}));},[]);
+        const processedFindings = useMemo(()=>findings.map(f=>({...f,isActive:missions.some(m=>m.title===f.title&&m.status==='active')})),[findings,missions]);
+        const makeLlmRequest = useCallback(async(prompt,params)=>callLLMSimulator(llmEngine,prompt,params),[llmEngine]);
+
+        useEffect(()=>{const runScan=async()=>{setIsScanning(true);try{const r=await callLLMSimulator(llmEngine,"AUTO_SCAN",{});if(r.newInsights)setInsights(r.newInsights);if(r.newMissions)setMissions(prev=>{const titles=prev.map(m=>m.title);const newOnes=r.newMissions.filter(m=>!titles.includes(m.title));return[...newOnes,...prev];});}catch(e){console.error(e);}finally{setIsScanning(false);}};runScan();},[]);
+
+        return (
+          <div className="min-h-screen bg-[#050505] text-white font-sans pb-24 relative overflow-hidden">
+            <div className="relative z-10">
+              <Header xp={xp} levelName="Cash Manager" streak={streak} onOpenSettings={()=>setOverlays(p=>({...p,settings:true}))} onOpenImport={()=>setOverlays(p=>({...p,import:true}))} onOpenReport={()=>setOverlays(p=>({...p,report:true}))} onOpenLightSpeed={()=>setOverlays(p=>({...p,lightspeed:true}))} isScanning={isScanning}/>
+              <main className="mx-auto p-4 max-w-md">
+                {view==='cockpit'&&(
+                  <div className="space-y-8 animate-in">
+                    <StatusSection data={data}/>
+                    <RevenueWidget data={data}/>
+                    <InsightsSection onOpenFindings={()=>setOverlays(p=>({...p,findings:true}))} onOpen={setDetailType} insights={insights}/>
+                    <div>
+                      <div className="flex justify-between items-end mb-3 px-1"><h3 className="text-lg font-bold text-white">Deine Missionen</h3>{isScanning&&<span className="text-[10px] text-slate-500 flex items-center gap-1"><Icon name="Loader" size={10} className="animate-spin"/> Aktualisiere...</span>}</div>
+                      <div className="space-y-3">
+                        {missions.filter(m=>m.status==='active').map(m=><MissionCard key={m.id} {...m} onComplete={handleComplete}/>)}
+                        {missions.filter(m=>m.status==='active').length===0&&<div className="p-8 text-center bg-slate-900/50 rounded-2xl border border-dashed border-slate-800"><Icon name="CheckCircle2" size={32} className="mx-auto text-emerald-500/50 mb-2"/><p className="text-slate-500">Alle erledigt!</p></div>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {view==='journal'&&<JournalView missions={missions} onComplete={handleComplete}/>} 
+                {view==='flow'&&<FlowView onCreateMission={handleCreateMission} onLlmRequest={makeLlmRequest}/>} 
+                {view==='sandbox'&&<SandboxView data={data} onCreateMission={handleCreateMission} onLlmRequest={makeLlmRequest}/>} 
+                {overlays.findings&&<FindingsModal findings={processedFindings} onClose={()=>setOverlays(p=>({...p,findings:false}))} onActivate={handleActivateFinding}/>} 
+                {overlays.settings&&<SettingsView onClose={()=>setOverlays(p=>({...p,settings:false}))} currentLlm={llmEngine} onLlmChange={setLlmEngine}/>} 
+                {overlays.import&&<DataImportView onClose={()=>setOverlays(p=>({...p,import:false}))} onImport={handleImportData}/>} 
+                {overlays.lightspeed&&<LightSpeedImportModal onClose={()=>setOverlays(p=>({...p,lightspeed:false}))} onImport={handleImportData}/>} 
+                {overlays.report&&<ReportView onClose={()=>setOverlays(p=>({...p,report:false}))}/>} 
+                {detailType&&<DetailModal type={detailType} onClose={()=>setDetailType(null)} onCreateMission={handleCreateMission}/>} 
+              </main>
+              <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-sm bg-[#121212] border border-slate-800 rounded-full shadow-2xl z-50 p-1.5 flex justify-between">
+                <button onClick={()=>setView("cockpit") } className={'flex-1 py-3 rounded-full flex justify-center transition-all '+(view==='cockpit'?'bg-white text-black':'text-slate-500 hover:text-white')}><Icon name="Home" size={20} strokeWidth={2.5}/></button>
+                <button onClick={()=>setView("flow")} className={'flex-1 py-3 rounded-full flex justify-center transition-all '+(view==='flow'?'bg-emerald-500 text-white':'text-slate-500 hover:text-white')}><Icon name="ArrowRightLeft" size={20} strokeWidth={2.5}/></button>
+                <button onClick={()=>setView("sandbox")} className={'flex-1 py-3 rounded-full flex justify-center transition-all '+(view==='sandbox'?'bg-indigo-500 text-white':'text-slate-500 hover:text-white')}><Icon name="Sliders" size={20} strokeWidth={2.5}/></button>
+                <button onClick={()=>setView("journal")} className={'flex-1 py-3 rounded-full flex justify-center transition-all '+(view==='journal'?'bg-orange-500 text-white':'text-slate-500 hover:text-white')}><Icon name="BookOpen" size={20} strokeWidth={2.5}/></button>
+              </nav>
+            </div>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(<FinWingApp />);
+  </script>
+</body>
+</html>

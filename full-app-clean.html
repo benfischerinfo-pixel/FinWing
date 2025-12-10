@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinWing - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.0/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-[#050505]">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const Icon = ({ name, size = 24, className = "", strokeWidth = 2, fill = "none" }) => {
+      const ref = React.useRef(null);
+      React.useEffect(() => {
+        if (ref.current && window.lucide) {
+          ref.current.innerHTML = '';
+          const icon = window.lucide.createElement(window.lucide.icons[name]);
+          icon.setAttribute('width', size);
+          icon.setAttribute('height', size);
+          icon.setAttribute('stroke-width', strokeWidth);
+          if (fill !== "none") icon.setAttribute('fill', fill);
+          ref.current.appendChild(icon);
+        }
+      }, [name, size, strokeWidth, fill]);
+      return <span ref={ref} className={`inline-flex ${className}`} />;
+    };
+
+    function App() {
+      const [view, setView] = useState("flow");
+      const [drillDown, setDrillDown] = useState(null);
+
+      if (drillDown) {
+        return (
+          <div className="min-h-screen bg-[#050505] text-white p-6">
+            <button 
+              onClick={() => setDrillDown(null)}
+              className="mb-4 px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700"
+            >
+              ← Zurück
+            </button>
+            <h2 className="text-2xl font-bold text-white">Detail: {drillDown}</h2>
+            <div className="mt-4 p-4 bg-slate-800 rounded-lg">
+              <p>Artikel-Details für {drillDown}</p>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-[#050505] text-white">
+          <header className="border-b border-slate-800 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                <Icon name="Zap" size={22} fill="white" className="text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-black text-white">FinWing</h1>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-blue-400 uppercase border border-blue-500/30 px-1.5 py-0.5 rounded bg-blue-500/10">
+                    CASH MANAGER
+                  </span>
+                  <span className="text-[9px] text-slate-600">1532 XP</span>
+                  <span className="text-[9px] text-orange-400">🔥 7d</span>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <main className="p-4 max-w-2xl mx-auto">
+            <h2 className="text-2xl font-black mb-4 flex items-center gap-2">
+              <Icon name="ArrowRightLeft" className="text-emerald-400" />
+              Geldfluss
+            </h2>
+
+            <div className="mb-4 flex items-center gap-2">
+              <input type="checkbox" id="bowtie" defaultChecked className="w-4 h-4" />
+              <label htmlFor="bowtie" className="text-xs font-bold text-slate-400">
+                Bow Tie Ansicht
+              </label>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-[#141824] rounded-2xl border border-slate-800 p-5">
+                <h3 className="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+                  <Icon name="TrendingUp" size={14} className="text-emerald-400" />
+                  EINNAHMEN
+                </h3>
+                {[
+                  { id: 'food', label: 'Speisen', value: 22000, color: '#10b981' },
+                  { id: 'drinks', label: 'Getränke', value: 18500, color: '#34d399' },
+                  { id: 'catering', label: 'Catering', value: 8000, color: '#059669' }
+                ].map(item => (
+                  <div 
+                    key={item.id}
+                    onClick={() => setDrillDown(item.label)}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800/60 cursor-pointer mb-2"
+                  >
+                    <div className="w-3 h-10 rounded-full" style={{backgroundColor: item.color}} />
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-white font-bold">{item.label}</span>
+                        <span className="text-white font-mono">{item.value.toLocaleString('de-DE')} €</span>
+                      </div>
+                    </div>
+                    <Icon name="ChevronRight" size={16} className="text-slate-600" />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-center">
+                <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+                  <Icon name="ArrowDown" size={24} className="text-slate-400" />
+                </div>
+              </div>
+
+              <div className="bg-[#141824] rounded-2xl border border-slate-800 p-5">
+                <h3 className="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+                  <Icon name="TrendingDown" size={14} className="text-red-400" />
+                  AUSGABEN
+                </h3>
+                {[
+                  { label: 'Wareneinsatz', value: 14500, color: '#ef4444' },
+                  { label: 'Personal', value: 16800, color: '#f97316' },
+                  { label: 'Fixkosten', value: 8800, color: '#eab308' }
+                ].map(item => (
+                  <div 
+                    key={item.label}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800/60 cursor-pointer mb-2"
+                  >
+                    <div className="w-3 h-10 rounded-full" style={{backgroundColor: item.color}} />
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-white font-bold">{item.label}</span>
+                        <span className="text-white font-mono">-{item.value.toLocaleString('de-DE')} €</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

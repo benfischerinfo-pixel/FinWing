@@ -1,0 +1,10 @@
+{
+  "date": "Buchungstag",
+  "value_date": "Valutadatum",
+  "description": "Verwendungszweck or Buchungstext",
+  "amount": "Betrag",
+  "currency": "Waehrung",
+  "counterparty_name": "Name Zahlungsbeteiligter",
+  "counterparty_iban": "IBAN Zahlungsbeteiligter",
+  "counterparty_bic": "BIC (SWIFT-Code) Zahlungsbeteiligter"
+}

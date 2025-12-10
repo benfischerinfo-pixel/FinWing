@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FinWing - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.22.5/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slide-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-in { animation: fade-in 0.3s ease-out, slide-up 0.4s ease-out; }
+    input[type="range"] { -webkit-appearance: none; background: transparent; width: 100%; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: white; cursor: pointer; margin-top: -6px; }
+    input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 8px; background: #1e293b; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-[#050505]">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+    // === LocalStorage ===
+    const loadFromStorage = (key, defaultValue) => {
+      try {
+        const saved = localStorage.getItem(key);
+        return saved ? JSON.parse(saved) : defaultValue;
+      } catch (e) {
+        console.error('Storage error:', e);
+        return defaultValue;
+      }
+    };
+
+    const saveToStorage = (key, value) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        console.error('Storage error:', e);
+      }
+    };
+
+    // === Kategorisierung ===
+    const categorizeSupplier = (supplierName) => {
+      const name = (supplierName || '').toLowerCase().trim();
+      if (/lightspeed|stripe|paypal|sumup|square/.test(name)) return 'Zahlungsanbieter';
+      if (/supermarkt|rewe|aldi|lidl|edeka|metro/.test(name)) return 'Wareneinkauf';
+      if (/bäck|metzger|fleisch|fisch|obst|gemüse/.test(name)) return 'Lebensmittel';
+      if (/steuer|finanzamt|umsatzsteuer/.test(name)) return 'Steuern';
+      if (/strom|gas|telefon|internet|vodafone|telekom/.test(name)) return 'Nebenkosten';
+      if (/gehalt|lohn|krankenkasse/.test(name)) return 'Personal';
+      if (/miete|vermiet|immobil/.test(name)) return 'Miete';
+      return 'Unkategorisiert';
+    };
+
+    // === Icon Component ===
+    const Icon = ({ name, size = 24, className = "", strokeWidth = 2, fill = "none" }) => {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (ref.current && window.lucide && window.lucide.icons[name]) {
+          ref.current.innerHTML = '';
+          const icon = window.lucide.createElement(window.lucide.icons[name]);
+          icon.setAttribute('width', size);
+          icon.setAttribute('height', size);
+          icon.setAttribute('stroke-width', strokeWidth);
+          if (fill !== "none") icon.setAttribute('fill', fill);
+          ref.current.appendChild(icon);
+        }
+      }, [name, size, strokeWidth, fill]);
+      return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} style={{display: 'inline-flex'}} />;
+    };
+
+    // === CONFIG ===
+    const DATA_CONFIG = {
+      revenues: [
+        { id: 'food', label: 'Speisen', value: 22000, color: '#10b981', trend: 5 },
+        { id: 'drinks', label: 'Getränke', value: 18500, color: '#34d399', trend: 12 },
+        { id: 'catering', label: 'Catering', value: 8000, color: '#059669', trend: -40, hasAlert: true },
+        { id: 'uber', label: 'Uber Eats', value: 4500, color: '#8b5cf6', trend: 2 }
+      ],
+      costs: [
+        { id: 'cogs', label: 'Wareneinsatz', value: 14500, color: '#ef4444' },
+        { id: 'pers', label: 'Personal', value: 16800, color: '#f97316' },
+        { id: 'fix', label: 'Fixkosten', value: 8800, color: '#eab308' },
+        { id: 'other', label: 'Sonstiges', value: 2500, color: '#64748b' }
+      ],
+      allFindings: [
+        { id: 'pita', type: 'cost_spike', title: 'Preisanstieg: Pita Brot', desc: '+0,05 EUR pro Stück seit 02.12.', impact: '-1.800 EUR', category: 'Einkauf', severity: 'high' },
+        { id: 'kitchen', type: 'anomaly', title: 'Anomalie: Küchenrolle', desc: 'Verbrauch +30% ohne Umsatzanstieg.', impact: '-450 EUR', category: 'Operations', severity: 'medium' },
+        { id: 'energy', type: 'cost_spike', title: 'Stromabschlag erhöht', desc: 'Stadtwerke: Abschlag +15%.', impact: '-2.100 EUR', category: 'Fixkosten', severity: 'high' }
+      ]
+    };
+
+    const formatEuro = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
+    const formatPercent = (val) => (val > 0 ? '+' : '') + val.toFixed(1) + '%';
+
+    // === HEADER ===
+    const Header = ({ xp, levelName, streak, onOpenSettings, onOpenImport, onOpenReport, isScanning }) => (
+      <header className="sticky top-0 z-30 bg-[#050505]/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+              <Icon name="Zap" size={22} className="text-white" fill="white" />
+            </div>
+            <div>
+              <h1 className="font-black text-xl text-white">FinWing</h1>
+              <span className="text-[10px] font-bold text-blue-400 uppercase">{levelName}</span>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onOpenReport} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
+              <Icon name="FileText" size={18} className="text-indigo-400" />
+            </button>
+            <button onClick={onOpenImport} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
+              <Icon name="Upload" size={18} className="text-emerald-400" />
+            </button>
+            <button onClick={onOpenSettings} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
+              <Icon name="Settings" size={18} className="text-slate-400" />
+            </button>
+          </div>
+        </div>
+      </header>
+    );
+
+    // === STATUS SECTION ===
+    const StatusSection = ({ data }) => {
+      const reserved = (data.upcomingPayments || []).reduce((s, i) => s + i.amount, 0);
+      const available = data.cashBalance - reserved;
+      const totalCosts = Object.values(data.costs || {}).reduce((a, b) => a + b, 0);
+      const runwayDays = totalCosts > 0 ? Math.floor((available / totalCosts) * 30) : 999;
+      return (
+        <div className="bg-gradient-to-br from-[#0f131a] to-[#0a0d12] rounded-[2rem] border border-emerald-500/20 p-6">
+          <div className="flex justify-between items-center mb-6">
+            <div className="text-slate-400 text-xs font-bold uppercase">Liquidität</div>
+            <div className="px-3 py-1.5 rounded-full bg-emerald-500 text-black text-[10px] font-black">✓ STABIL</div>
+          </div>
+          <div className="flex items-center gap-4 mb-8">
+            <span className="text-6xl font-black text-white">{runwayDays}</span>
+            <div>
+              <span className="text-xl text-slate-500 font-bold uppercase block">Tage Puffer</span>
+              <span className="text-[10px] text-slate-600">bei aktuellem Burn-Rate</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 border-t border-slate-800/50 pt-5">
+            <div>
+              <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Verfügbar</div>
+              <div className="text-2xl font-bold text-emerald-400">{formatEuro(available)}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Reserviert</div>
+              <div className="text-lg font-bold text-red-400/80">-{formatEuro(reserved)}</div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // === REVENUE WIDGET ===
+    const RevenueWidget = ({ data }) => {
+      const pct = (data.revenue / data.plannedRevenue) * 100;
+      return (
+        <div className="bg-[#141824] rounded-[2rem] border border-slate-800 p-6">
+          <div className="text-[10px] font-bold text-slate-500 uppercase mb-2">Dieser Monat</div>
+          <div className="flex items-baseline gap-3 mb-4">
+            <span className="text-4xl font-black text-white">{formatEuro(data.revenue)}</span>
+            <span className="text-sm text-slate-600 font-bold">/ {formatEuro(data.plannedRevenue)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="px-3 py-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-xs font-bold">
+              ✓ {pct.toFixed(1)}% Ziel
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // === MISSION CARD ===
+    const MissionCard = ({ id, category, title, desc, impact, status, onComplete }) => {
+      const [isCompleting, setIsCompleting] = useState(false);
+      const handleComplete = async () => {
+        setIsCompleting(true);
+        await new Promise(r => setTimeout(r, 600));
+        onComplete(id);
+      };
+      return (
+        <div className="group bg-[#141824] border border-slate-800 rounded-[1.5rem] p-5 hover:border-slate-700">
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{category}</span>
+            <div className="text-right">
+              <div className="text-[9px] font-bold text-slate-500 uppercase mb-0.5">Potenzial</div>
+              <div className="text-lg font-black text-emerald-400">+{impact}</div>
+            </div>
+          </div>
+          <h4 className="font-bold text-white text-lg mb-2">{title}</h4>
+          <p className="text-xs text-slate-400 mb-5">{desc}</p>
+          {status === 'active' && (
+            <button onClick={handleComplete} disabled={isCompleting} className="w-full py-3 bg-white text-slate-950 rounded-xl text-xs font-bold hover:bg-slate-100 flex items-center justify-center gap-2">
+              {isCompleting ? '...' : '✓ Erledigt'}
+            </button>
+          )}
+        </div>
+      );
+    };
+
+    // === MAIN APP ===
+    function FinWingApp() {
+      const [view, setView] = useState("cockpit");
+      const [xp, setXp] = useState(() => loadFromStorage('finwing.xp', 1250));
+      const [missions, setMissions] = useState(() => loadFromStorage('finwing.missions', [
+        { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impact: "420 EUR", desc: "Mozzarella +12%", status: 'active' },
+        { id: 2, title: "Preise optimieren", category: "Umsatz", impact: "650 EUR", desc: "+3% Top-10", status: 'active' }
+      ]));
+      const [data] = useState({
+        cashBalance: 45000,
+        revenue: 48500,
+        plannedRevenue: 52000,
+        costs: { cogs: 14500, personnel: 16800, rent: 8800, energy: 1800, other: 2500 },
+        upcomingPayments: [{ amount: 3250 }]
+      });
+
+      useEffect(() => { saveToStorage('finwing.xp', xp); }, [xp]);
+      useEffect(() => { saveToStorage('finwing.missions', missions); }, [missions]);
+
+      const handleComplete = useCallback((id) => {
+        setMissions(prev => prev.map(m => m.id === id ? { ...m, status: 'completed' } : m));
+        setXp(p => p + 100);
+      }, []);
+
+      return (
+        <div className="min-h-screen bg-[#050505] text-white pb-24">
+          <Header xp={xp} levelName="Cash Manager" streak={7} onOpenSettings={() => {}} onOpenImport={() => {}} onOpenReport={() => {}} isScanning={false} />
+          <main className="mx-auto p-4 max-w-md">
+            {view === 'cockpit' && (
+              <div className="space-y-8 animate-in">
+                <StatusSection data={data} />
+                <RevenueWidget data={data} />
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-3 px-1">Deine Missionen</h3>
+                  <div className="space-y-3">
+                    {missions.filter(m => m.status === 'active').map(m => (
+                      <MissionCard key={m.id} {...m} onComplete={handleComplete} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-sm bg-[#121212] border border-slate-800 rounded-full shadow-2xl z-50 p-1.5 flex justify-between">
+            <button onClick={() => setView("cockpit")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'cockpit' ? 'bg-white text-black' : 'text-slate-500')}>
+              <Icon name="Home" size={20} />
+            </button>
+            <button onClick={() => setView("flow")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'flow' ? 'bg-emerald-500 text-white' : 'text-slate-500')}>
+              <Icon name="ArrowRightLeft" size={20} />
+            </button>
+            <button onClick={() => setView("sandbox")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'sandbox' ? 'bg-indigo-500 text-white' : 'text-slate-500')}>
+              <Icon name="Sliders" size={20} />
+            </button>
+            <button onClick={() => setView("journal")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'journal' ? 'bg-orange-500 text-white' : 'text-slate-500')}>
+              <Icon name="BookOpen" size={20} />
+            </button>
+          </nav>
+        </div>
+      );
+    }
+
+    setTimeout(() => {
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<FinWingApp />);
+    }, 1000);
+  </script>
+</body>
+</html>

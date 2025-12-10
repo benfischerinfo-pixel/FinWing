@@ -1,0 +1,865 @@
+{
+  "supplier_count": 50,
+  "suppliers": [
+    {
+      "supplier": "LIGHTSPEED NETHERLANDS B.V.",
+      "count": 23,
+      "sum": 42873.63,
+      "last_date": "03.11.2025",
+      "suggested_category": "Zahlungsanbieter / Plattform (Einnahmen)",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": 1106.64,
+          "text": "LS Fizzy Bubele"
+        },
+        {
+          "date": "27.11.2025",
+          "amount": 1111.38,
+          "text": "LS Fizzy Bubele"
+        },
+        {
+          "date": "26.11.2025",
+          "amount": 1300.3,
+          "text": "LS Fizzy Bubele"
+        }
+      ]
+    },
+    {
+      "supplier": "Märkte München",
+      "count": 2,
+      "sum": -6583.2,
+      "last_date": "05.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "12.11.2025",
+          "amount": -80.48,
+          "text": "Rechnungsnummer: 90064757 SecureGo plus IBAN: DE84700202706050142963 BIC: HYVEDEMMXXX"
+        },
+        {
+          "date": "05.11.2025",
+          "amount": -6502.72,
+          "text": "Bescheidnr.: 0000428154 / MHM SecureGo plus IBAN: DE84700202706050142963 BIC: HYVEDEMMXXX"
+        }
+      ]
+    },
+    {
+      "supplier": "Ben Fischer",
+      "count": 5,
+      "sum": -6500.0,
+      "last_date": "03.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": -3000.0,
+          "text": "Privatentnahme SecureGo plus IBAN: DE18100101784744717993 BIC: REVODEB2XXX"
+        },
+        {
+          "date": "19.11.2025",
+          "amount": -1000.0,
+          "text": "Privatentnahme Daniel / Ben 50/50 SecureGo plus IBAN: DE18100101784744717993 BIC: REVODEB2XXX"
+        },
+        {
+          "date": "17.11.2025",
+          "amount": -1300.0,
+          "text": "Privatentnahme SecureGo plus IBAN: DE18100101784744717993 BIC: REVODEB2XXX"
+        }
+      ]
+    },
+    {
+      "supplier": "Finanzamt Munchen Abteilung Erhebung",
+      "count": 1,
+      "sum": -5234.03,
+      "last_date": "14.11.2025",
+      "suggested_category": "Steuern",
+      "sample_rows": [
+        {
+          "date": "14.11.2025",
+          "amount": -5234.03,
+          "text": "STEUERNR 143/518/70622 FISCHER BEN + FISCHER DANIEL GBR FIZZY BUBELE LOHNST OKT.25 1.513,08EUR UMS.ST SEP.25 3.720,95EUR EREF: 143/518/70622-----L1111202500070355 MREF: BYA17236433705 CRED: DE13ZZZ00000076365 IBAN: DE37700500000000024962 BIC: BYLADEMMXXX ABWA: Finanzamt Muenchen"
+        }
+      ]
+    },
+    {
+      "supplier": "Daniel Fischer",
+      "count": 3,
+      "sum": -3750.0,
+      "last_date": "05.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": -2000.0,
+          "text": "Privatentnahme SecureGo plus IBAN: DE38700202700657573418 BIC: HYVEDEMMXXX"
+        },
+        {
+          "date": "21.11.2025",
+          "amount": -250.0,
+          "text": "Privatentnahme SecureGo plus IBAN: DE38700202700657573418 BIC: HYVEDEMMXXX"
+        },
+        {
+          "date": "05.11.2025",
+          "amount": -1500.0,
+          "text": "Privatentnahme SecureGo plus IBAN: DE38700202700657573418 BIC: HYVEDEMMXXX"
+        }
+      ]
+    },
+    {
+      "supplier": "Freistaat Bayern",
+      "count": 1,
+      "sum": -3361.0,
+      "last_date": "12.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "12.11.2025",
+          "amount": -3361.0,
+          "text": "Daniel Fischer 147/110/20692 15.10.25 992 4791102069222 SecureGo plus IBAN: DE05700000000070001506 BIC: MARKDEF1700"
+        }
+      ]
+    },
+    {
+      "supplier": "German Simkin",
+      "count": 11,
+      "sum": -3184.19,
+      "last_date": "13.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": -38.65,
+          "text": "Trinkgeld vom 27.11.2025 SecureGo plus IBAN: DE50700700240299111500 BIC: DEUTDEDBMUC"
+        },
+        {
+          "date": "28.11.2025",
+          "amount": -43.76,
+          "text": "Trinkgeld vom 25.11.2025 SecureGo plus IBAN: DE50700700240299111500 BIC: DEUTDEDBMUC"
+        },
+        {
+          "date": "28.11.2025",
+          "amount": -56.07,
+          "text": "Trinkgeld vom 18.11.2025 SecureGo plus IBAN: DE50700700240299111500 BIC: DEUTDEDBMUC"
+        }
+      ]
+    },
+    {
+      "supplier": "STADT MUENCHEN",
+      "count": 1,
+      "sum": -3176.0,
+      "last_date": "17.11.2025",
+      "suggested_category": "Steuern",
+      "sample_rows": [
+        {
+          "date": "17.11.2025",
+          "amount": -3176.0,
+          "text": "5290356260007 Faell.bis:15.11.25 Gewerbesteuer,914351870622 EREF: PSCD001103923881 MREF: S10000215753 CRED: DE34LHM00000015556 IBAN: DE34700202700000081300 BIC: HYVEDEMMXXX ABWE: Fischer Ben  Fischer Daniel GbR"
+        }
+      ]
+    },
+    {
+      "supplier": "Danel Feinkost GmbH + Co. KG",
+      "count": 3,
+      "sum": -2579.85,
+      "last_date": "12.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "24.11.2025",
+          "amount": -981.48,
+          "text": "1317240 MREF: Ben Fischer CRED: DE81ZZZ00001813381 IBAN: DE90701500001000622322 BIC: SSKMDEMMXXX"
+        },
+        {
+          "date": "19.11.2025",
+          "amount": -719.47,
+          "text": "1317174 MREF: Ben Fischer CRED: DE81ZZZ00001813381 IBAN: DE90701500001000622322 BIC: SSKMDEMMXXX"
+        },
+        {
+          "date": "12.11.2025",
+          "amount": -878.9,
+          "text": "1317102 MREF: Ben Fischer CRED: DE81ZZZ00001813381 IBAN: DE90701500001000622322 BIC: SSKMDEMMXXX"
+        }
+      ]
+    },
+    {
+      "supplier": "Priyankara Namal Hikkaduwa Withanage",
+      "count": 5,
+      "sum": -2474.02,
+      "last_date": "13.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": -28.57,
+          "text": "Trinkgeld vom 21.11.2025 TAN: Auftrag nicht TAN-pflichtig, da Kleinbetragszahlung IBAN: DE62200411440895068500 BIC: COBADEHD044"
+        },
+        {
+          "date": "28.11.2025",
+          "amount": -2235.18,
+          "text": "Gehalt November 2025 SecureGo plus IBAN: DE62200411440895068500 BIC: COBADEHD044"
+        },
+        {
+          "date": "13.11.2025",
+          "amount": -60.9,
+          "text": "Trinkgeldauszahlung vom 10.11.2025 SecureGo plus IBAN: DE62200411440895068500 BIC: COBADEHD044"
+        }
+      ]
+    },
+    {
+      "supplier": "Rumer Singer",
+      "count": 8,
+      "sum": -2325.44,
+      "last_date": "28.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": -35.02,
+          "text": "Trinkgeld vom 26.11.2025 SecureGo plus IBAN: DE30701500001004857064 BIC: SSKMDEMMXXX"
+        },
+        {
+          "date": "28.11.2025",
+          "amount": -60.67,
+          "text": "Trinkgeld vom 24.11.2025 SecureGo plus IBAN: DE30701500001004857064 BIC: SSKMDEMMXXX"
+        },
+        {
+          "date": "28.11.2025",
+          "amount": -62.65,
+          "text": "Trinkgeld vom 22.11.2025 SecureGo plus IBAN: DE30701500001004857064 BIC: SSKMDEMMXXX"
+        }
+      ]
+    },
+    {
+      "supplier": "RUDOLF KROTTER",
+      "count": 2,
+      "sum": -2172.19,
+      "last_date": "14.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": -995.9,
+          "text": "RNR 2025 11 / 565 MREF: 1 CRED: DE16ZZZ00001261457 IBAN: DE80721500000021156633 BIC: BYLADEM1ING"
+        },
+        {
+          "date": "14.11.2025",
+          "amount": -1176.29,
+          "text": "RNR 2025 10 / 547 MREF: 1 CRED: DE16ZZZ00001261457 IBAN: DE80721500000021156633 BIC: BYLADEM1ING"
+        }
+      ]
+    },
+    {
+      "supplier": "ANDRES MARIO LALLA",
+      "count": 2,
+      "sum": -2016.26,
+      "last_date": "13.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": -1966.15,
+          "text": "Gehalt November 2025 SecureGo plus IBAN: DE39100110012769054911 BIC: NTSBDEB1XXX"
+        },
+        {
+          "date": "13.11.2025",
+          "amount": -50.11,
+          "text": "Trinkgeldauszahlung vom 03.11.2025 SecureGo plus IBAN: DE39100110012769054911 BIC: NTSBDEB1XXX"
+        }
+      ]
+    },
+    {
+      "supplier": "Techniker Krankenkasse",
+      "count": 1,
+      "sum": -1832.17,
+      "last_date": "26.11.2025",
+      "suggested_category": "Sozialversicherung/Beiträge",
+      "sample_rows": [
+        {
+          "date": "26.11.2025",
+          "amount": -1832.17,
+          "text": "BNR: 84331498 B562001E3J3 Beitraege 11/25 EREF: 7108108873 MREF: MD3203812N2 CRED: DE51TK100000031158 IBAN: DE59200505501280376854 BIC: HASPDEHHXXX"
+        }
+      ]
+    },
+    {
+      "supplier": "STICHTING CUSTODIAN UBER PAYMENTS",
+      "count": 4,
+      "sum": 1817.55,
+      "last_date": "03.11.2025",
+      "suggested_category": "Fahrdienst / Plattform-Einnahmen",
+      "sample_rows": [
+        {
+          "date": "24.11.2025",
+          "amount": 280.3,
+          "text": "POP SVCS, DOB , 20251117 - 20251123 EREF: IWEZVGHCRVDWGP8 ABWA: Uber Payments B.V."
+        },
+        {
+          "date": "17.11.2025",
+          "amount": 522.72,
+          "text": "POP SVCS, DOB , 20251110 - 20251116 EREF: K3DE69517FHAUBT ABWA: Uber Payments B.V."
+        },
+        {
+          "date": "10.11.2025",
+          "amount": 587.48,
+          "text": "POP SVCS, DOB , 20251103 - 20251109 EREF: YJOBNBZ1M7MB9SW ABWA: Uber Payments B.V."
+        }
+      ]
+    },
+    {
+      "supplier": "Heberger & Battilana Partnerschaft Steuerberater",
+      "count": 3,
+      "sum": -1728.19,
+      "last_date": "12.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "17.11.2025",
+          "amount": -1171.86,
+          "text": "Erste Teilzahlung Offenstände SecureGo plus IBAN: DE95711525700012504874 BIC: BYLADEM1MIB"
+        },
+        {
+          "date": "12.11.2025",
+          "amount": -447.74,
+          "text": "Re.Nr.: 525 SecureGo plus IBAN: DE95711525700012504874 BIC: BYLADEM1MIB"
+        },
+        {
+          "date": "12.11.2025",
+          "amount": -108.59,
+          "text": "Re.Nr.: 527 SecureGo plus IBAN: DE95711525700012504874 BIC: BYLADEM1MIB"
+        }
+      ]
+    },
+    {
+      "supplier": "Fruechte Feldbrach Gm",
+      "count": 4,
+      "sum": -1699.43,
+      "last_date": "04.11.2025",
+      "suggested_category": "Einkauf: Lebensmittel",
+      "sample_rows": [
+        {
+          "date": "25.11.2025",
+          "amount": -546.46,
+          "text": "R-Nr 1855850 v 15112025 EREF: 0411 MREF: 22257 CRED: DE84ZZZ00000382092 IBAN: DE52600202900026508266 BIC: HYVEDEMM473"
+        },
+        {
+          "date": "18.11.2025",
+          "amount": -482.2,
+          "text": "R-Nr 1853246 v 08112025 EREF: 0245 MREF: 22257 CRED: DE84ZZZ00000382092 IBAN: DE52600202900026508266 BIC: HYVEDEMM473"
+        },
+        {
+          "date": "11.11.2025",
+          "amount": -48.66,
+          "text": "R-Nr 1848535 v 31102025 EREF: 069 MREF: 22257 CRED: DE84ZZZ00000382092 IBAN: DE52600202900026508266 BIC: HYVEDEMM473"
+        }
+      ]
+    },
+    {
+      "supplier": "Hamberger Großmarkt GmbH",
+      "count": 2,
+      "sum": -1635.24,
+      "last_date": "18.11.2025",
+      "suggested_category": "Einkauf: Lebensmittel",
+      "sample_rows": [
+        {
+          "date": "19.11.2025",
+          "amount": -544.39,
+          "text": "RNR 250092024278 Datum 13.11.2025 B etrag 544,39 Kto. 24047 71 EREF: 2511170738-0000153 MREF: 2404771 CRED: DE23ZZZ00000120999 IBAN: DE54700800000415805200 BIC: DRESDEFF700"
+        },
+        {
+          "date": "18.11.2025",
+          "amount": -1090.85,
+          "text": "Kto. 24047 71 RNR 250092019934 Datu m 27.10.2025 Betrag -8,57, RNR 2500 92023244 Datum 10.11.2025 Betrag 1. 099,42 EREF: 2511140720-0000006 MREF: 2404771 CRED: DE23ZZZ00000120999 IBAN: DE54700800000415805200 BIC: DRESDEFF700"
+        }
+      ]
+    },
+    {
+      "supplier": "BKK firmus",
+      "count": 1,
+      "sum": -1558.71,
+      "last_date": "26.11.2025",
+      "suggested_category": "Sozialversicherung/Beiträge",
+      "sample_rows": [
+        {
+          "date": "26.11.2025",
+          "amount": -1558.71,
+          "text": "Beitraege 01.11.2025 - 30.11.2025 84331498 1558.71 EREF: 2610003952473218 MREF: 026152990827-1 CRED: DE46ZZZ00000026592 IBAN: DE40200300000030046607 BIC: HYVEDEMM300"
+        }
+      ]
+    },
+    {
+      "supplier": "KKH HAUPTVERW., HANNOVER",
+      "count": 1,
+      "sum": -1357.92,
+      "last_date": "26.11.2025",
+      "suggested_category": "Sozialversicherung/Beiträge",
+      "sample_rows": [
+        {
+          "date": "26.11.2025",
+          "amount": -1357.92,
+          "text": "BEITRAG 11/25 FUER 84331498 BEN + DANIEL FISCHER GBR   SOZIALVERSICHERUNGSBEITRAG KKH            1.357,92 EUR Mandat 0647900483-0202-1 EREF: 000053316 MREF: 0647900483-0202-1 CRED: DE58KKH00000263929 IBAN: DE52250400660313958108 BIC: COBADEFF"
+        }
+      ]
+    },
+    {
+      "supplier": "AOK Bayern - Die Gesundheits kasse",
+      "count": 1,
+      "sum": -1314.37,
+      "last_date": "26.11.2025",
+      "suggested_category": "Sozialversicherung/Beiträge",
+      "sample_rows": [
+        {
+          "date": "26.11.2025",
+          "amount": -1314.37,
+          "text": "0358240097 OB-84331498 EUR 1.314,37. BEITRAG 1125 - 1125 EREF: 0358240097 OB-84331498 MREF: 1214840063000001 CRED: DE49AOK00000018487 IBAN: DE32370205000009856502 BIC: BFSWDE33XXX"
+        }
+      ]
+    },
+    {
+      "supplier": "DAK-Gesundheit",
+      "count": 1,
+      "sum": -1133.19,
+      "last_date": "17.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "17.11.2025",
+          "amount": -1133.19,
+          "text": "Beitrag 01.10.2025 - 31.10.2025 1133.19 EREF: 2610014566489457 MREF: 0155411706929-1 CRED: DE03DAK00001901794 IBAN: DE04653412040124010000 BIC: COBADEFF"
+        }
+      ]
+    },
+    {
+      "supplier": "Corde Concepts e.K.",
+      "count": 1,
+      "sum": 1041.25,
+      "last_date": "12.11.2025",
+      "suggested_category": "Einnahme: Sonstiges / POS",
+      "sample_rows": [
+        {
+          "date": "12.11.2025",
+          "amount": 1041.25,
+          "text": "Rechnung 2025 -26"
+        }
+      ]
+    },
+    {
+      "supplier": "OMNICOM FINANCIAL SERVICES LIMITED",
+      "count": 1,
+      "sum": 928.2,
+      "last_date": "07.11.2025",
+      "suggested_category": "Einnahme: Sonstiges / POS",
+      "sample_rows": [
+        {
+          "date": "07.11.2025",
+          "amount": 928.2,
+          "text": "2025-25 PAID BY Hearts + Science Munchen GmbH EREF: OFS035372542 ABWA: Hearts + Science Munchen GmbH"
+        }
+      ]
+    },
+    {
+      "supplier": "ARAG SE",
+      "count": 1,
+      "sum": -798.87,
+      "last_date": "12.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "12.11.2025",
+          "amount": -798.87,
+          "text": "11 0131 1481 0003 P10957187 SecureGo plus IBAN: DE54302201900323535205 BIC: HYVEDEMM414"
+        }
+      ]
+    },
+    {
+      "supplier": "Münchner Bank MR-pfl. Verbindlichkeit",
+      "count": 2,
+      "sum": -589.61,
+      "last_date": "11.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "11.11.2025",
+          "amount": -549.61,
+          "text": "MASTERCARD Abrechnung BEN FISCHER EREF: KKM70190000700294136800 MREF: DZ0102700294136820241017 CRED: DE56ZZZ00000008273 IBAN: DE29701900001139028919 BIC: GENODEF1M01"
+        },
+        {
+          "date": "11.11.2025",
+          "amount": -40.0,
+          "text": "MASTERCARD Abrechnung EREF: KKM70190000700294136800 MREF: DZ0102700294136820241017 CRED: DE56ZZZ00000008273 IBAN: DE29701900001139028919 BIC: GENODEF1M01"
+        }
+      ]
+    },
+    {
+      "supplier": "Jan Horstmann",
+      "count": 1,
+      "sum": 535.0,
+      "last_date": "28.11.2025",
+      "suggested_category": "Einnahme: Sonstiges / POS",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": 535.0,
+          "text": "Rechnung 17.11.2025 Rechnung 2025-30 Catering"
+        }
+      ]
+    },
+    {
+      "supplier": "Frugalis & more Hand",
+      "count": 2,
+      "sum": -481.5,
+      "last_date": "17.11.2025",
+      "suggested_category": "Wareneinkauf",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": -240.75,
+          "text": "Re.Nr.: 25703696 SecureGo plus IBAN: DE97700202700015136700 BIC: HYVEDEMMXXX"
+        },
+        {
+          "date": "17.11.2025",
+          "amount": -240.75,
+          "text": "Re.Nr.: 25703573 SecureGo plus IBAN: DE97700202700015136700 BIC: HYVEDEMMXXX"
+        }
+      ]
+    },
+    {
+      "supplier": "Frugalis & More",
+      "count": 2,
+      "sum": -481.5,
+      "last_date": "12.11.2025",
+      "suggested_category": "Wareneinkauf",
+      "sample_rows": [
+        {
+          "date": "12.11.2025",
+          "amount": -240.75,
+          "text": "Re.Nr.: 25703340 SecureGo plus IBAN: DE97700202700015136700 BIC: HYVEDEMMXXX"
+        },
+        {
+          "date": "12.11.2025",
+          "amount": -240.75,
+          "text": "Re.Nr.:25703282 SecureGo plus IBAN: DE97700202700015136700 BIC: HYVEDEMMXXX"
+        }
+      ]
+    },
+    {
+      "supplier": "Corinna Sarah Wißmann",
+      "count": 1,
+      "sum": 447.26,
+      "last_date": "20.11.2025",
+      "suggested_category": "Einnahme: Sonstiges / POS",
+      "sample_rows": [
+        {
+          "date": "20.11.2025",
+          "amount": 447.26,
+          "text": "Catering C.Wißmann Rechnung 2025-29 EREF: CCB.323.UE.POS00312888"
+        }
+      ]
+    },
+    {
+      "supplier": "PACOVIS DEUTSCHLAND GMBH",
+      "count": 1,
+      "sum": -402.64,
+      "last_date": "28.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": -402.64,
+          "text": "Rechnung 451379 SecureGo plus IBAN: DE23640912000235333000 BIC: GENODES1MTZ"
+        }
+      ]
+    },
+    {
+      "supplier": "Katharina Cogbill-Wagner und Mark Volz wg. GbR Burke A",
+      "count": 1,
+      "sum": 347.75,
+      "last_date": "26.11.2025",
+      "suggested_category": "Einnahme: Sonstiges / POS",
+      "sample_rows": [
+        {
+          "date": "26.11.2025",
+          "amount": 347.75,
+          "text": "2025 -31"
+        }
+      ]
+    },
+    {
+      "supplier": "Otto Pachmayr GmbH + Co. Mi",
+      "count": 1,
+      "sum": -315.2,
+      "last_date": "19.11.2025",
+      "suggested_category": "Wareneinkauf",
+      "sample_rows": [
+        {
+          "date": "19.11.2025",
+          "amount": -315.2,
+          "text": "2500566356 315,20 MREF: 2113855 CRED: DE06ZZZ00000358567 IBAN: DE75700800000326785400 BIC: DRESDEFF700"
+        }
+      ]
+    },
+    {
+      "supplier": "AMAZON PAYMENTS EUROPE S.C.A.",
+      "count": 10,
+      "sum": -308.22,
+      "last_date": "12.11.2025",
+      "suggested_category": "Marktplatz/Online-Umsatz",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": -8.46,
+          "text": "303-5777158-6706717 AMZN Mktp DE 360ZZF7UOJXBJ7IH EREF: 360ZZF7UOJXBJ7IH MREF: a:t.t-rNZu3-))7CS0,p9AoMdkwQq8 CRED: DE94ZZZ00000561653 IBAN: DE87300308801908262006 BIC: TUBDDEDD"
+        },
+        {
+          "date": "27.11.2025",
+          "amount": -45.88,
+          "text": "303-4957397-1837969 AMZN Mktp DE 5YN9QWTLKTC59ODF EREF: 5YN9QWTLKTC59ODF MREF: a:t.t-rNZu3-))7CS0,p9AoMdkwQq8 CRED: DE94ZZZ00000561653 IBAN: DE87300308801908262006 BIC: TUBDDEDD"
+        },
+        {
+          "date": "26.11.2025",
+          "amount": -15.99,
+          "text": "303-8879261-5649939 AMZN Mktp DE BPTPB17YD9BEGT8V EREF: BPTPB17YD9BEGT8V MREF: a:t.t-rNZu3-))7CS0,p9AoMdkwQq8 CRED: DE94ZZZ00000561653 IBAN: DE87300308801908262006 BIC: TUBDDEDD"
+        }
+      ]
+    },
+    {
+      "supplier": "Karl Huczala",
+      "count": 2,
+      "sum": -303.52,
+      "last_date": "17.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "17.11.2025",
+          "amount": -113.29,
+          "text": "2025-373, 2025-377, 2025-378, 2025-379, 2025-380 SecureGo plus IBAN: DE32701900000003021998 BIC: GENODEF1M01"
+        },
+        {
+          "date": "17.11.2025",
+          "amount": -190.23,
+          "text": "2025-347 SecureGo plus IBAN: DE32701900000003021998 BIC: GENODEF1M01"
+        }
+      ]
+    },
+    {
+      "supplier": "Berufsgenossenschaft Nahrungsmittel und Gastgewerbe",
+      "count": 1,
+      "sum": -254.49,
+      "last_date": "17.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "17.11.2025",
+          "amount": -254.49,
+          "text": "7132 4291 0206 001/Vorschuss 2025 ENR 10474537254 EREF: 10474537254 MREF: MM77.063.382.480-001 CRED: DE1400000000049575 IBAN: DE41600501017403054838 BIC: SOLADEST600"
+        }
+      ]
+    },
+    {
+      "supplier": "Ludwig Stocker Hofpfisterei GmbH",
+      "count": 1,
+      "sum": -226.99,
+      "last_date": "28.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": -226.99,
+          "text": "Untermiete Kellerraum Elisabethmarkt Dezember 2025 SecureGo plus IBAN: DE96701500000000177600 BIC: SSKMDEMMXXX"
+        }
+      ]
+    },
+    {
+      "supplier": "Wimmer Großhandel GmbH",
+      "count": 1,
+      "sum": -202.23,
+      "last_date": "12.11.2025",
+      "suggested_category": "Einkauf: Lebensmittel",
+      "sample_rows": [
+        {
+          "date": "12.11.2025",
+          "amount": -202.23,
+          "text": "Re.Nr.: 34599 SecureGo plus IBAN: DE79740618130005328462 BIC: GENODEF1PFK"
+        }
+      ]
+    },
+    {
+      "supplier": "KKH Kaufmaennische Krankenkasse",
+      "count": 1,
+      "sum": 194.15,
+      "last_date": "03.11.2025",
+      "suggested_category": "Sozialversicherung/Beiträge",
+      "sample_rows": [
+        {
+          "date": "03.11.2025",
+          "amount": 194.15,
+          "text": "VSNR14210102S043 ,AAG - U118. bis 20.10.2025 : Nr.VSNR14210102S043/18.10.2025 : EREF:     100006006782062025 ABWA: KKH Kaufmaennische Krankenkasse"
+        }
+      ]
+    },
+    {
+      "supplier": "GC RE GASTROFIX",
+      "count": 1,
+      "sum": -152.32,
+      "last_date": "06.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "06.11.2025",
+          "amount": -152.32,
+          "text": "INV00451460 EREF: D-0048DK7XVSHY MREF: WS756DG CRED: GB43ZZZSDDBARC0000007495895045 IBAN: FR7617118820080000002148758 BIC: GOAAFRP1"
+        }
+      ]
+    },
+    {
+      "supplier": "Jia Jun He",
+      "count": 1,
+      "sum": -135.66,
+      "last_date": "12.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "12.11.2025",
+          "amount": -135.66,
+          "text": "Re-1339 SecureGo plus IBAN: DE82700400410307088500 BIC: COBADEFFXXX"
+        }
+      ]
+    },
+    {
+      "supplier": "Telefonica Germany GmbH + Co. OHG",
+      "count": 1,
+      "sum": -77.4,
+      "last_date": "27.11.2025",
+      "suggested_category": "Telefon/Internet",
+      "sample_rows": [
+        {
+          "date": "27.11.2025",
+          "amount": -77.4,
+          "text": "Kd-Nr.: 6011351922, Rg-Nr.: 1410711822/8, Ihre Tarifrechnung EREF: 3104693000090001410711822008RCUR MREF: T0010002B000006011351922 CRED: DE9700000000142462 IBAN: DE16700202700005713153 BIC: HYVEDEMMXXX"
+        }
+      ]
+    },
+    {
+      "supplier": "APC AG",
+      "count": 1,
+      "sum": -71.4,
+      "last_date": "07.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "07.11.2025",
+          "amount": -71.4,
+          "text": "SAR0233300 EREF: 0005150000ZV001458Z MREF: DEB173919-001 CRED: DE79APC00000353761 IBAN: DE34760501010010248151 BIC: SSKNDE77XXX"
+        }
+      ]
+    },
+    {
+      "supplier": "(UNKNOWN)",
+      "count": 2,
+      "sum": -68.78,
+      "last_date": "28.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "28.11.2025",
+          "amount": -57.8,
+          "text": "Abschluss per 30.11.2025"
+        },
+        {
+          "date": "28.11.2025",
+          "amount": -10.98,
+          "text": "19% Umsatzsteuer auf       EUR       57,80-           Abrechnung per 30.11.2025  von Konto        102941368"
+        }
+      ]
+    },
+    {
+      "supplier": "M-net Telekommunikations GmbH",
+      "count": 1,
+      "sum": -61.52,
+      "last_date": "20.11.2025",
+      "suggested_category": "Telefon/Internet",
+      "sample_rows": [
+        {
+          "date": "20.11.2025",
+          "amount": -61.52,
+          "text": "D-Nr M501930796, /INV/202510372489 TELEFONIE Oktober 2025, ZahlB 1304234937 EREF: 1304234937 MREF: M5019307960001 CRED: DE3505800000015150 IBAN: DE74700500000000028273 BIC: BYLADEMMXXX ABWA: M-net Telek. GmbH"
+        }
+      ]
+    },
+    {
+      "supplier": "Peter Hechtl Altfettentsorgung",
+      "count": 1,
+      "sum": 35.7,
+      "last_date": "06.11.2025",
+      "suggested_category": "Wareneinkauf",
+      "sample_rows": [
+        {
+          "date": "06.11.2025",
+          "amount": 35.7,
+          "text": "GUTSCHRIFT NR. 3.850-251.963 ENTSORGUNG ALTSPEISEFETT/ALTSPEISEO EL EREF: 1234321"
+        }
+      ]
+    },
+    {
+      "supplier": "AMAZON BUSINESS EU SARL",
+      "count": 2,
+      "sum": -31.96,
+      "last_date": "21.11.2025",
+      "suggested_category": "Marktplatz/Online-Umsatz",
+      "sample_rows": [
+        {
+          "date": "21.11.2025",
+          "amount": -15.98,
+          "text": "303-2607681-6091541 AMZNBusiness 5Z0KBY1TP40MKXLO EREF: 5Z0KBY1TP40MKXLO MREF: a:t.t-rNZu3-))7CS0,p9AoMdkwQq8 CRED: DE93ZZZ00002502544 IBAN: DE56300308801898904004 BIC: TUBDDEDD"
+        },
+        {
+          "date": "21.11.2025",
+          "amount": -15.98,
+          "text": "303-4772286-1493914 AMZNBusiness 2AMG3YI5Z52P8OC5 EREF: 2AMG3YI5Z52P8OC5 MREF: a:t.t-rNZu3-))7CS0,p9AoMdkwQq8 CRED: DE93ZZZ00002502544 IBAN: DE56300308801898904004 BIC: TUBDDEDD"
+        }
+      ]
+    },
+    {
+      "supplier": "DIBRAN COCAJ",
+      "count": 1,
+      "sum": -30.0,
+      "last_date": "10.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "10.11.2025",
+          "amount": -30.0,
+          "text": "DIBRAN COCAJ/MUENCHEN/DE   08.11.2025 um 16:59:50 Uhr 54116201/138574/ECTL/      70190000/0102941368/3/1226 REF 447841/260024"
+        }
+      ]
+    },
+    {
+      "supplier": "Drillisch Online GmbH",
+      "count": 1,
+      "sum": -15.06,
+      "last_date": "21.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "21.11.2025",
+          "amount": -15.06,
+          "text": "C4183551 U757359222 B866843339 winSIM EREF: C4183551+U757359222 MREF: 4FABBF5FD0A3D0CA16032DBE04F CRED: DE40ZZZ00000206926 IBAN: DE87300500000008996811 BIC: WELADEDDXXX"
+        }
+      ]
+    },
+    {
+      "supplier": "DOMAINFACTORY GMBH",
+      "count": 1,
+      "sum": -5.99,
+      "last_date": "11.11.2025",
+      "suggested_category": "Ausgabe: Sonstiges",
+      "sample_rows": [
+        {
+          "date": "11.11.2025",
+          "amount": -5.99,
+          "text": "Rg. 40745968 v. 08.11.25 EREF: 7-11/491-489644-14527 MREF: K489644X1 CRED: DE31ZZZ00000001836 IBAN: DE73512106004223295025 BIC: BNPADEFFXXX"
+        }
+      ]
+    }
+  ]
+}

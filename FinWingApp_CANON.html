@@ -8,7 +8,7 @@
   <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.23.0/babel.min.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/lucide@0.263.1/dist/umd/lucide.min.js"></script>
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     body { font-family: system-ui, -apple-system, sans-serif; }
@@ -93,18 +93,21 @@
       return 'Unkategorisiert';
     };
 
-    // Lucide Icons
+    // Lucide Icons - Fixed for version 0.263.1
     const Icon = ({ name, size = 24, className = "", strokeWidth = 2, fill = "none" }) => {
       const ref = React.useRef(null);
       React.useEffect(() => {
-        if (ref.current) {
+        if (ref.current && window.lucide) {
           ref.current.innerHTML = '';
-          const icon = lucide.createElement(lucide.icons[name]);
-          icon.setAttribute('width', size);
-          icon.setAttribute('height', size);
-          icon.setAttribute('stroke-width', strokeWidth);
-          if (fill !== "none") icon.setAttribute('fill', fill);
-          ref.current.appendChild(icon);
+          const iconName = name.charAt(0).toLowerCase() + name.slice(1).replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`);
+          const iconElement = window.lucide.createElement(iconName);
+          if (iconElement) {
+            iconElement.setAttribute('width', size);
+            iconElement.setAttribute('height', size);
+            iconElement.setAttribute('stroke-width', strokeWidth);
+            if (fill !== "none") iconElement.setAttribute('fill', fill);
+            ref.current.appendChild(iconElement);
+          }
         }
       }, [name, size, strokeWidth, fill]);
       return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} />;

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>FinWing Minimal Test</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body class="bg-black">
+  <div id="root">
+    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0f172a 0%, #020617 100%);">
+      <div style="text-align: center; color: white;">
+        <h2 style="font-size: 24px; font-weight: bold;">Loading...</h2>
+      </div>
+    </div>
+  </div>
+  
+  <script type="text/babel">
+    console.log("=== MINIMAL TEST START ===");
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
+    console.log("React hooks loaded:", !!useState);
+    
+    // Icon component
+    const Icon = ({ name, size = 24, className = "", strokeWidth = 2, fill = "none" }) => {
+      const ref = React.useRef(null);
+      React.useEffect(() => {
+        if (ref.current && lucide && lucide[name]) {
+          lucide.createIcons({ icons: { [name]: lucide[name] }, attrs: { size, 'stroke-width': strokeWidth, fill }, nameAttr: 'data-lucide' });
+        }
+      }, [name, size, strokeWidth, fill]);
+      return React.createElement('i', { ref, 'data-lucide': name, className });
+    };
+    console.log("Icon component created");
+    
+    function MinimalApp() {
+      console.log("MinimalApp rendering...");
+      const [count, setCount] = useState(0);
+      
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-8">
+          <div className="max-w-2xl mx-auto bg-white/10 backdrop-blur-xl rounded-2xl p-8">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                <Icon name="Zap" size={24} className="text-white" fill="white" />
+              </div>
+              <h1 className="text-3xl font-black text-white">FinWing Minimal</h1>
+            </div>
+            
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 mb-4">
+              <p className="text-emerald-400 font-semibold">✓ React + Babel funktioniert</p>
+            </div>
+            
+            <button
+              onClick={() => setCount(c => c + 1)}
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-xl transition-all"
+            >
+              Counter: {count}
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    console.log("About to render MinimalApp...");
+    try {
+      const root = document.getElementById('root');
+      if (!root) throw new Error("Root not found");
+      ReactDOM.createRoot(root).render(<MinimalApp />);
+      console.log("=== MINIMAL APP RENDERED ===");
+    } catch(e) {
+      console.error("ERROR:", e);
+      document.getElementById('root').innerHTML = `<div style="color:red;padding:20px;"><h1>ERROR:</h1><pre>${e.toString()}</pre></div>`;
+    }
+  </script>
+</body>
+</html>
