@@ -1195,6 +1195,8 @@
         const [drillDown, setDrillDown] = useState(null);
         const [aiInsight, setAiInsight] = useState(null);
         const [isAnalyzing, setIsAnalyzing] = useState(false);
+        const [timeFilter, setTimeFilter] = useState('Mo');
+        const [showBowTie, setShowBowTie] = useState(true);
       
         const revenues = DATA_CONFIG.revenues;
         const costs = DATA_CONFIG.costs;
@@ -1267,6 +1269,19 @@
           <div className="space-y-6 pb-24 animate-in">
             <div className="flex justify-between items-end">
               <div><h2 className="text-2xl font-black text-white flex items-center gap-2"><Icon name="ArrowRightLeft" size={24} className="text-emerald-400"/> Geldfluss</h2><p className="text-xs text-slate-400 mt-1">Woher kommt's, wohin geht's?</p></div>
+            </div>
+            
+            {/* Controls */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="bg-[#0a0d14] p-1 rounded-xl border border-slate-800 flex gap-1">
+                {['Tag','Wo','Mo','Jahr'].map(t=>(
+                  <button key={t} onClick={()=>setTimeFilter(t)} className={'px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all '+(timeFilter===t?'bg-indigo-600 text-white':'text-slate-500 hover:text-slate-300')}>{t}</button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="bowtie" checked={showBowTie} onChange={(e)=>setShowBowTie(e.target.checked)} className="w-4 h-4 rounded cursor-pointer" />
+                <label htmlFor="bowtie" className="text-xs font-bold text-slate-400 cursor-pointer">Bow-Tie</label>
+              </div>
             </div>
           
             {/* Revenue Section */}
