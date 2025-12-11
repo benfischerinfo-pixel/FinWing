@@ -402,49 +402,43 @@
       const driver = topRisk ? { type: 'risk', label: topRisk.label, yoy: topRisk.yoy } : topChance ? { type: 'chance', label: topChance.label, yoy: topChance.yoy } : null;
 
       return (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex justify-between items-start px-1">
             <div>
               <h3 className="text-lg font-bold text-white leading-tight">Business Health</h3>
-              <p className="text-[11px] text-slate-500">Radar Monat</p>
+              <p className="text-xs text-slate-500">Radar Monat</p>
             </div>
-            <div className="text-[10px] font-bold text-slate-600 uppercase">Netto & Risiko</div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-[#141824] rounded-[2rem] border border-slate-800 p-6">
-              <div className="text-[10px] font-black tracking-[0.08em] text-slate-500 uppercase mb-3">Netto-Cashflow</div>
-              <div className="flex items-baseline gap-2 mb-3">
-                <span className="text-4xl font-black text-white leading-none">{formatEuro(netYoY.current)}</span>
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Netto-Cashflow Card */}
+            <div className="flex-1 bg-[#141824] rounded-2xl border border-slate-800 p-5 hover:border-slate-700 transition-all">
+              <div className="text-xs font-black tracking-widest text-slate-500 uppercase mb-3">Netto-Cashflow</div>
+              <div className="space-y-2 mb-3">
+                <div className="text-3xl font-black text-white leading-none">{formatEuro(netYoY.current)}</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-xs text-slate-400">VJ: {formatEuro(netYoY.previousYear)}</div>
-                <div className={'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-bold ' + (netPositive ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400' : 'border-red-500/25 bg-red-500/10 text-red-400')}>
-                  {netPositive ? <Icon name="ArrowUpRight" size={12} /> : <Icon name="ArrowDownRight" size={12} />} {formatPercent(netYoY.deltaPct)} vs VJ
+              <div className="space-y-1.5">
+                <div className="text-xs text-slate-400">VJ: <span className="text-slate-300 font-medium">{formatEuro(netYoY.previousYear)}</span></div>
+                <div className={'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ' + (netPositive ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-red-500/30 bg-red-500/10 text-red-400')}>
+                  {netPositive ? <Icon name="ArrowUpRight" size={13} /> : <Icon name="ArrowDownRight" size={13} />} {formatPercent(netYoY.deltaPct)}
                 </div>
               </div>
             </div>
 
-            <div className="bg-[#141824] rounded-[2rem] border border-slate-800 p-6">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="text-[10px] font-black tracking-[0.08em] text-slate-500 uppercase">Top-Risiko / Top-Chance</div>
-                  <div className="text-[11px] text-slate-500">Kategorie • VJ</div>
-                </div>
-              </div>
+            {/* Top-Risiko / Top-Chance Card */}
+            <div className="flex-1 bg-[#141824] rounded-2xl border border-slate-800 p-5 hover:border-slate-700 transition-all">
+              <div className="text-xs font-black tracking-widest text-slate-500 uppercase mb-3">Top-Risiko / Chance</div>
               {driver ? (
                 <div className="space-y-2">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-black text-white leading-none">{formatEuro(driver.yoy.current)}</span>
+                  <div className="text-2xl font-black text-white leading-none">{formatEuro(driver.yoy.current)}</div>
+                  <div className="text-xs text-slate-400"><span className="text-slate-300 font-medium">{driver.label}</span> • VJ: {formatEuro(driver.yoy.previousYear)}</div>
+                  <div className={'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ' + (driver.type === 'risk' ? 'border-orange-500/30 bg-orange-500/10 text-orange-400' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400')}>
+                    {driver.yoy.deltaAbs >= 0 ? <Icon name="ArrowUpRight" size={13} /> : <Icon name="ArrowDownRight" size={13} />} {formatPercent(driver.yoy.deltaPct)}
                   </div>
-                  <div className="text-xs text-slate-400">{driver.label} • VJ: {formatEuro(driver.yoy.previousYear)}</div>
-                  <div className={'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-bold ' + (driver.type === 'risk' ? 'border-orange-500/25 bg-orange-500/10 text-orange-400' : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400')}>
-                    {driver.yoy.deltaAbs >= 0 ? <Icon name="ArrowUpRight" size={12} /> : <Icon name="ArrowDownRight" size={12} />} {formatPercent(driver.yoy.deltaPct)} vs VJ
-                  </div>
-                  <div className="text-[11px] text-slate-600">Runway bleibt oben priorisiert</div>
+                  <div className="text-xs text-slate-600 italic">Runway im Fokus</div>
                 </div>
               ) : (
-                <div className="text-sm text-slate-400 mt-2">Alles im grünen Bereich</div>
+                <div className="text-sm text-slate-400">Alles im grünen Bereich</div>
               )}
             </div>
           </div>
@@ -706,8 +700,9 @@
             </g>
             <text x={centerX} y={centerY+12} textAnchor="middle" fill="#94a3b8" fontSize="12" fontWeight="600">{formatEuro(net)}</text>
             <g>
-              <rect x={centerX-42} y={centerY+15} width="84" height="28" rx="8" fill="#0f172a" opacity="0.8"/>
-              <text x={centerX} y={centerY+30} textAnchor="middle" fill={net >= netLy ? '#34d399' : '#f87171'} fontSize="10" fontWeight="600">VJ: {formatEuro(netLy)} ({netLy!==0?formatPercent(netTrend*100):'+0.0%'})</text>
+              <rect x={centerX-50} y={centerY+16} width="100" height="36" rx="12" fill="#0f172a" stroke="#f87171" strokeWidth="1" opacity="0.95"/>
+              <text x={centerX} y={centerY+32} textAnchor="middle" fill={net >= netLy ? '#34d399' : '#f87171'} fontSize="11" fontWeight="700" style={{letterSpacing: '0.02em'}}>VJ: {formatEuro(netLy)}</text>
+              <text x={centerX} y={centerY+44} textAnchor="middle" fill={net >= netLy ? '#34d399' : '#f87171'} fontSize="10" fontWeight="600" opacity="0.9">({netLy!==0?formatPercent(netTrend*100):'+0.0%'})</text>
             </g>
             {left.map(item=>(<g key={item.id} onClick={()=>item.hasAlert?onShowInsight&&onShowInsight(item.id):onDrillDown&&onDrillDown(item.id)} onMouseEnter={()=>setHovered(item.id)} onMouseLeave={()=>setHovered(null)} style={{cursor:'pointer'}}><path d={'M '+(item.x+item.w)+' '+(item.y+item.h/2)+' C '+(centerX-90)+' '+(item.y+item.h/2)+', '+(centerX-90)+' '+centerY+', '+(centerX-centerR)+' '+centerY} fill="none" stroke={item.color} strokeWidth={Math.max(4,item.h*0.5)} opacity={hovered===item.id?0.4:0.12}/><rect x={item.x} y={item.y} width={item.w} height={item.h} rx="10" fill={item.color} opacity={hovered===item.id?1:0.9}/>{item.hasAlert&&<g transform={'translate('+(item.x+item.w-8)+','+(item.y-6)+')'}><circle r="12" fill="#ef4444" stroke="#050505" strokeWidth="2" className="animate-pulse"/><text x="0" y="5" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">!</text></g>}{item.isLarge?<><text x={item.textX} y={item.y+18} fill="white" fontSize="12" fontWeight="bold" textAnchor={item.align}>{item.label}</text><text x={item.textX} y={item.y+item.h-10} fill="white" fontSize="11" fontWeight="600" textAnchor={item.align}>{formatEuro(item.current)}</text></>:<text x={item.textX} y={item.y+item.h/2+4} fill="white" fontSize="11" fontWeight="bold" textAnchor={item.align}>{item.label}</text>}</g>))}
             {right.map(item=>(<g key={item.id} onClick={()=>onDrillDown&&onDrillDown(item.id)} onMouseEnter={()=>setHovered(item.id)} onMouseLeave={()=>setHovered(null)} style={{cursor:'pointer'}}><path d={'M '+(centerX+centerR)+' '+centerY+' C '+(centerX+90)+' '+centerY+', '+(centerX+90)+' '+(item.y+item.h/2)+', '+item.x+' '+(item.y+item.h/2)} fill="none" stroke={item.color} strokeWidth={Math.max(4,item.h*0.5)} opacity={hovered===item.id?0.4:0.12}/><rect x={item.x} y={item.y} width={item.w} height={item.h} rx="10" fill={item.color} opacity={hovered===item.id?1:(item.isProfit?1:0.9)}/>{item.isLarge?<><text x={item.textX} y={item.y+18} fill="white" fontSize="12" fontWeight="bold" textAnchor={item.align}>{item.label}</text><text x={item.textX} y={item.y+item.h-10} fill="white" fontSize="11" fontWeight="600" textAnchor={item.align}>{formatEuro(item.current)}</text></>:<text x={item.textX} y={item.y+item.h/2+4} fill="white" fontSize="11" fontWeight="bold" textAnchor={item.align}>{item.label}</text>}</g>))}
