@@ -1,12 +1,1671 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
-  <head>
-    <meta charset="UTF-8" />
-    <title>FinWing</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  </head>
-  <body class="bg-slate-950 text-slate-50">
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FinWing - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.22.5/babel.min.js"></script>
+  <script>
+    // Catch and display ALL errors
+    window.babelErrors = [];
+    window.addEventListener('error', function(e) {
+      const errorMsg = e.error ? (e.error.message + '\n\n' + e.error.stack) : (e.message + '\nFile: ' + e.filename + '\nLine: ' + e.lineno);
+      window.babelErrors.push(errorMsg);
+      document.body.innerHTML = '<div style="background: #ef4444; color: white; padding: 20px; font-family: monospace; white-space: pre-wrap;"><h1>⚠️ SCRIPT ERROR</h1>' + errorMsg + '<hr/><h2>Console Errors:</h2><div id="console-errors"></div></div>';
+    });
+    
+    // Override console.error to capture Babel errors
+    const originalConsoleError = console.error;
+    console.error = function(...args) {
+      const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+      if (msg.includes('SyntaxError') || msg.includes('Unexpected') || msg.includes('babel')) {
+        document.body.innerHTML = '<div style="background: #ef4444; color: white; padding: 20px; font-family: monospace; white-space: pre-wrap;"><h1>⚠️ BABEL/SYNTAX ERROR</h1><pre>' + msg + '</pre></div>';
+      }
+      originalConsoleError.apply(console, args);
+    };
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slide-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-in { animation: fade-in 0.3s ease-out, slide-up 0.4s ease-out; }
+    input[type="range"] { -webkit-appearance: none; background: transparent; width: 100%; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: white; cursor: pointer; margin-top: -6px; }
+    input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 8px; background: #1e293b; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-[#050505]">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+    // === LocalStorage ===
+    const loadFromStorage = (key, defaultValue) => {
+      try {
+        const saved = localStorage.getItem(key);
+        return saved ? JSON.parse(saved) : defaultValue;
+      } catch (e) {
+        console.error('Storage error:', e);
+        return defaultValue;
+      }
+    };
+
+    const saveToStorage = (key, value) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        console.error('Storage error:', e);
+      }
+    };
+
+    // === DATA CONFIG (canonical from FinWingApp.jsx) ===
+    const DATA_CONFIG = {
+      revenues: [
+        { id: 'food', label: 'Speisen', value: 22000, color: '#10b981', trend: 5, trendYoY: 0.05 },
+        { id: 'drinks', label: 'Getraenke', value: 18500, color: '#34d399', trend: 12, trendYoY: 0.12 },
+        { id: 'catering', label: 'Catering', value: 8000, color: '#059669', trend: -40, hasAlert: true, trendYoY: -0.4 },
+        { id: 'uber', label: 'Uber Eats', value: 4500, color: '#8b5cf6', trend: 2, trendYoY: 0.02 }
+      ],
+      costs: [
+        { id: 'cogs', label: 'Wareneinsatz', value: 14500, color: '#ef4444', trendYoY: 0.06 },
+        { id: 'pers', label: 'Personal', value: 16800, color: '#f97316', trendYoY: 0.09 },
+        { id: 'fix', label: 'Fixkosten', value: 8800, color: '#eab308', trendYoY: 0.03 },
+        { id: 'other', label: 'Sonstiges', value: 2500, color: '#64748b', trendYoY: 0.01 }
+      ],
+      allFindings: [
+        { id: 'pita', type: 'cost_spike', title: 'Preisanstieg: Pita Brot', desc: '+0,05 EUR pro Stueck seit 02.12.', impact: '-1.800 EUR', category: 'Einkauf', severity: 'high' },
+        { id: 'kitchen', type: 'anomaly', title: 'Anomalie: Kuechenrolle', desc: 'Verbrauch +30% ohne Umsatzanstieg.', impact: '-450 EUR', category: 'Operations', severity: 'medium' },
+        { id: 'energy', type: 'cost_spike', title: 'Stromabschlag erhoeht', desc: 'Stadtwerke: Abschlag +15%.', impact: '-2.100 EUR', category: 'Fixkosten', severity: 'high' }
+      ],
+      drillDowns: {
+        food: {
+          title: "Analyse: Speisen",
+          side: "in",
+          items: [
+            { name: "Pizza Margherita", unit: "Stück", amount: 950, total: 9500, ly: 8800, trend: 0.08 },
+            { name: "Bowl-Kreationen", unit: "Portionen", amount: 420, total: 6300, ly: 5200, trend: 0.21 },
+            { name: "Mittagsmenüs", unit: "Portionen", amount: 310, total: 5200, ly: 5700, trend: -0.09 }
+          ],
+          insight: {
+            type: "warning",
+            title: "Mittagsgeschäft verliert Dynamik",
+            text: "Menü-Umsatz -9 % zum Vorjahr. Karte straffen & 1 Signature-Dish testen."
+          }
+        },
+        drinks: {
+          title: "Analyse: Getränke",
+          side: "in",
+          items: [
+            { name: "Hauslimonade", unit: "Gläser", amount: 780, total: 5100, ly: 4200, trend: 0.21 },
+            { name: "Spritz & Aperitifs", unit: "Gläser", amount: 430, total: 6100, ly: 5900, trend: 0.03 },
+            { name: "Wein & Schaumwein", unit: "Gläser", amount: 260, total: 5300, ly: 5400, trend: -0.02 }
+          ],
+          insight: {
+            type: "info",
+            title: "Limo ist dein Star",
+            text: "Deckungsbeitrag stark, Preiserhöhung um 0,50 € ist realistisch."
+          }
+        },
+        catering: {
+          title: "Analyse: Catering",
+          side: "in",
+          items: [
+            { name: "Firmen-Lunches", unit: "Events", amount: 6, total: 4200, ly: 6400, trend: -0.34 },
+            { name: "Private Feiern", unit: "Events", amount: 3, total: 2600, ly: 3800, trend: -0.32 }
+          ],
+          insight: {
+            type: "danger",
+            title: "Catering bricht weg",
+            text: "Volumen -30 % zum Vorjahr. Angebot vereinfachen & 1 Fokus-Paket pushen."
+          }
+        },
+        uber: {
+          title: "Analyse: Uber Eats",
+          side: "in",
+          items: [
+            { name: "Abend-Peak (18–21h)", unit: "Bestellungen", amount: 120, total: 2100, ly: 1900, trend: 0.11 },
+            { name: "Spätabend (21–23h)", unit: "Bestellungen", amount: 60, total: 1000, ly: 900, trend: 0.11 }
+          ],
+          insight: {
+            type: "info",
+            title: "Gute Ergänzung – nicht Übertreiben",
+            text: "Unit Economics okay, aber keine Abhängigkeit von Plattformen aufbauen."
+          }
+        },
+        cogs: {
+          title: "Detail: Wareneinsatz",
+          side: "out",
+          isCost: true,
+          items: [
+            { name: "Frischeware", unit: "Anteil Umsatz", amount: 0.34, total: 7800, ly: 7200, trend: 0.08 },
+            { name: "Trockenware", unit: "Anteil Umsatz", amount: 0.12, total: 3200, ly: 3000, trend: 0.07 },
+            { name: "Getränke-EK", unit: "Anteil Umsatz", amount: 0.09, total: 2500, ly: 2200, trend: 0.14 }
+          ],
+          insight: {
+            type: "warning",
+            title: "Frischeanteil leicht zu hoch",
+            text: "Food-Cost 2–3 %-Punkte über Benchmark. Menüengineering lohnt sich."
+          }
+        },
+        pers: {
+          title: "Detail: Personal",
+          side: "out",
+          isCost: true,
+          items: [
+            { name: "Service", unit: "Stunden / Woche", amount: 180, total: 7200, ly: 6900, trend: 0.04 },
+            { name: "Küche", unit: "Stunden / Woche", amount: 210, total: 8400, ly: 8100, trend: 0.04 }
+          ],
+          insight: {
+            type: "warning",
+            title: "Dienstag & Mittwoch sind zu dicht besetzt",
+            text: "Personalkosten steigen schneller als Umsatz. Teste 1 Schicht weniger an schwachen Tagen."
+          }
+        },
+        fix: {
+          title: "Detail: Fixkosten",
+          side: "out",
+          isCost: true,
+          items: [
+            { name: "Miete", unit: "Monat", amount: 1, total: 4200, ly: 4100, trend: 0.02 },
+            { name: "Energie", unit: "Monat", amount: 1, total: 1650, ly: 2100, trend: -0.21 },
+            { name: "Versicherungen & Gebühren", unit: "Monat", amount: 1, total: 950, ly: 900, trend: 0.06 }
+          ],
+          insight: {
+            type: "info",
+            title: "Energie-Effizienz zahlt sich aus",
+            text: "Stromkosten -21 % durch neue Geräte. Weiter so!"
+          }
+        },
+        other: {
+          title: "Detail: Sonstiges",
+          side: "out",
+          isCost: true,
+          items: [
+            { name: "Marketing & Werbung", unit: "Monat", amount: 1, total: 850, ly: 600, trend: 0.42 },
+            { name: "Software & Tools", unit: "Monat", amount: 1, total: 420, ly: 380, trend: 0.11 },
+            { name: "Diverses", unit: "Monat", amount: 1, total: 280, ly: 300, trend: -0.07 }
+          ],
+          insight: {
+            type: "info",
+            title: "Marketing wird hochgefahren",
+            text: "Werbebudget +42 % für Social-Media-Kampagnen. ROI tracken!"
+          }
+        },
+        profit: {
+          title: "Gewinnanalyse",
+          isProfit: true,
+          items: [
+            { name: "Marge Speisen", unit: "x", amount: 1, total: 7500, ly: 6800, trend: 0.10 },
+            { name: "Marge Getränke", unit: "x", amount: 1, total: 11100, ly: 9500, trend: 0.17 }
+          ],
+          insight: {
+            type: "success",
+            title: "Gesamtbild",
+            text: "Gewinn stabil durch Getränke-Marge."
+          }
+        }
+      }
+    };
+
+    const formatEuro = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
+    const formatPercent = (val) => (val > 0 ? '+' : '') + val.toFixed(1) + '%';
+
+    // === Helper: compute YoY tuple for any item ===
+    const toYoY = (total, ly, scale = 1) => {
+      const current = (total || 0) * scale;
+      const previousYear = (ly || 0) * scale;
+      const deltaAbs = current - previousYear;
+      const deltaPct = previousYear !== 0 ? (deltaAbs / Math.abs(previousYear)) * 100 : 0;
+      return { current, previousYear, deltaAbs, deltaPct };
+    };
+
+    const computePeriodData = (config, period = 'month') => {
+      const scale = period === 'year' ? 12 : 1;
+      const revenues = config.revenues.map((r) => {
+        const current = r.value * scale;
+        const lastYear = current / (1 + (r.trendYoY || 0));
+        return { ...r, current, lastYear };
+      });
+      const costs = config.costs.map((c) => {
+        const current = c.value * scale;
+        const lastYear = current / (1 + (c.trendYoY || 0));
+        return { ...c, current, lastYear };
+      });
+      const totalRev = revenues.reduce((a, b) => a + b.current, 0);
+      const totalCost = costs.reduce((a, b) => a + b.current, 0);
+      const totalRevLy = revenues.reduce((a, b) => a + b.lastYear, 0);
+      const totalCostLy = costs.reduce((a, b) => a + b.lastYear, 0);
+      const net = totalRev - totalCost;
+      const netLy = totalRevLy - totalCostLy;
+      const netTrend = netLy !== 0 ? (net - netLy) / Math.abs(netLy) : 0;
+      return { revenues, costs, totalRev, totalCost, totalRevLy, totalCostLy, net, netLy, netTrend };
+    };
+
+    // === LLM Simulator (from FinWingApp.jsx) ===
+    const callLLMSimulator = async (engine, prompt, params) => {
+      const delay = engine === 'Claude' ? 2200 : engine === 'OpenAI' ? 1800 : 1500;
+      await new Promise(r => setTimeout(r, delay));
+      const prefix = engine === 'Claude' ? '[Claude] ' : engine === 'OpenAI' ? '[GPT-4] ' : '[Gemini] ';
+      if (prompt === "AUTO_SCAN") return { newMissions: [], newInsights: [] };
+      if (prompt.includes("hebel")) return { aiResponse: prefix + "Groesster Hebel: Personal." };
+      const delta = (params?.price||0) + (params?.volume||0) - (params?.cost||0);
+      return { aiResponse: prefix + (delta > 10 ? "Signifikanter Hebel: +" + delta + "%" : delta < -10 ? "Vorsicht: Verlust!" : "Neutral. Staerkere Hebel vorhanden.") };
+    };
+
+    // === Kategorisierung ===
+    const categorizeSupplier = (supplierName) => {
+      const name = (supplierName || '').toLowerCase().trim();
+      if (/lightspeed|stripe|paypal|sumup|square/.test(name)) return 'Zahlungsanbieter';
+      if (/supermarkt|rewe|aldi|lidl|edeka|metro/.test(name)) return 'Wareneinkauf';
+      if (/bäck|metzger|fleisch|fisch|obst|gemüse/.test(name)) return 'Lebensmittel';
+      if (/steuer|finanzamt|umsatzsteuer/.test(name)) return 'Steuern';
+      if (/strom|gas|telefon|internet|vodafone|telekom/.test(name)) return 'Nebenkosten';
+      if (/gehalt|lohn|krankenkasse/.test(name)) return 'Personal';
+      if (/miete|vermiet|immobil/.test(name)) return 'Miete';
+      return 'Unkategorisiert';
+    };
+
+    // === Icon Component ===
+    const Icon = ({ name, size = 24, className = "", strokeWidth = 2, fill = "none" }) => {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (ref.current && window.lucide && window.lucide.icons[name]) {
+          ref.current.innerHTML = '';
+          const icon = window.lucide.createElement(window.lucide.icons[name]);
+          icon.setAttribute('width', size);
+          icon.setAttribute('height', size);
+          icon.setAttribute('stroke-width', strokeWidth);
+          if (fill !== "none") icon.setAttribute('fill', fill);
+          ref.current.appendChild(icon);
+        }
+      }, [name, size, strokeWidth, fill]);
+      return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} style={{display: 'inline-flex'}} />;
+    };
+
+    // === HEADER ===
+    const Header = ({ xp, levelName, streak, onOpenSettings, onOpenImport, onOpenReport, onOpenFocus, isScanning, focusMode }) => {
+      const focusModeConfig = {
+        'none': { label: 'Kein Fokus', color: 'slate' },
+        'cost_down': { label: 'Kosten ↓', color: 'orange' },
+        'revenue_up': { label: 'Umsatz ↑', color: 'emerald' },
+        'anomalies': { label: 'Anomalien', color: 'red' },
+        'mix_synergy': { label: 'Mix', color: 'purple' },
+        'tier_mode': { label: 'Tier Mode', color: 'yellow' }
+      };
+      const currentFocus = focusModeConfig[focusMode] || focusModeConfig['none'];
+      return (
+        <header className="sticky top-0 z-30 bg-[#050505]/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Icon name="Zap" size={22} className="text-white" fill="white" />
+              </div>
+              <div>
+                <h1 className="font-black text-xl text-white">FinWing</h1>
+                <span className="text-[10px] font-bold text-blue-400 uppercase">{levelName}</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={onOpenFocus} className={focusMode !== 'none' ? 'w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-700 relative bg-indigo-500/20' : 'w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-700 relative bg-slate-800/80'} title="Fokus wählen">
+                <Icon name="Crosshair" size={18} className={focusMode !== 'none' ? 'text-indigo-400' : 'text-slate-400'} />
+                {focusMode !== 'none' && <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#050505]"></span>}
+              </button>
+              <button onClick={onOpenReport} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
+                <Icon name="FileText" size={18} className="text-indigo-400" />
+              </button>
+              <button onClick={onOpenImport} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
+                <Icon name="Upload" size={18} className="text-emerald-400" />
+              </button>
+              <button onClick={onOpenSettings} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
+                <Icon name="Settings" size={18} className="text-slate-400" />
+              </button>
+            </div>
+          </div>
+        </header>
+      );
+    };
+
+    // === STATUS SECTION ===
+    const StatusSection = ({ data }) => {
+      const reserved = (data.upcomingPayments || []).reduce((s, i) => s + i.amount, 0);
+      const available = data.cashBalance - reserved;
+      const totalCosts = Object.values(data.costs || {}).reduce((a, b) => a + b, 0);
+      const runwayDays = totalCosts > 0 ? Math.floor((available / totalCosts) * 30) : 999;
+      return (
+        <div className="bg-gradient-to-br from-[#0f131a] to-[#0a0d12] rounded-[2rem] border border-emerald-500/20 p-6">
+          <div className="flex justify-between items-center mb-6">
+            <div className="text-slate-400 text-xs font-bold uppercase">Liquidität</div>
+            <div className="px-3 py-1.5 rounded-full bg-emerald-500 text-black text-[10px] font-black">✓ STABIL</div>
+          </div>
+          <div className="flex items-center gap-4 mb-8">
+            <span className="text-6xl font-black text-white">{runwayDays}</span>
+            <div>
+              <span className="text-xl text-slate-500 font-bold uppercase block">Tage Puffer</span>
+              <span className="text-[10px] text-slate-600">bei aktuellem Burn-Rate</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 border-t border-slate-800/50 pt-5">
+            <div>
+              <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Verfügbar</div>
+              <div className="text-2xl font-bold text-emerald-400">{formatEuro(available)}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Reserviert</div>
+              <div className="text-lg font-bold text-red-400/80">-{formatEuro(reserved)}</div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // === REVENUE WIDGET (enriched with YoY) ===
+    const RevenueWidget = ({ data, periodData, period }) => {
+      const pct = (data.revenue / data.plannedRevenue) * 100;
+      const revYoy = periodData ? toYoY(periodData.totalRev, periodData.totalRevLy) : null;
+      return (
+        <div className="bg-[#141824] rounded-[2rem] border border-slate-800 p-6">
+          <div className="text-[10px] font-bold text-slate-500 uppercase mb-2">Dieser {period === 'year' ? 'Jahr (YTD)' : 'Monat'}</div>
+          <div className="flex items-baseline gap-3 mb-4">
+            <span className="text-4xl font-black text-white">{formatEuro(data.revenue)}</span>
+            <span className="text-sm text-slate-600 font-bold">/ {formatEuro(data.plannedRevenue)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="px-3 py-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-xs font-bold">
+              ✓ {pct.toFixed(1)}% Ziel
+            </div>
+            {revYoy && <div className="text-xs text-slate-500">VJ: {formatEuro(revYoy.previousYear)}</div>}
+          </div>
+        </div>
+      );
+    };
+
+    // === BUSINESS HEALTH STRIP (slim radar, unified KPI layout) ===
+    const BusinessHealthStrip = ({ data, periodData, period, onPeriodChange }) => {
+      const netYoY = toYoY(periodData.net, periodData.netLy);
+      const netPositive = netYoY.deltaAbs >= 0;
+
+      const costsWithYoY = (periodData.costs || []).map(c => ({ ...c, yoy: toYoY(c.current, c.lastYear) }));
+      const revenuesWithYoY = (periodData.revenues || []).map(r => ({ ...r, yoy: toYoY(r.current, r.lastYear) }));
+      const topRisk = costsWithYoY.filter(c => c.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
+      const topChance = revenuesWithYoY.filter(r => r.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
+      const driver = topRisk ? { type: 'risk', label: topRisk.label, yoy: topRisk.yoy } : topChance ? { type: 'chance', label: topChance.label, yoy: topChance.yoy } : null;
+
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-[#141824] rounded-[2rem] border border-slate-800 p-6">
+            <div className="text-[10px] font-bold text-slate-500 uppercase mb-2">Netto-Cashflow</div>
+            <div className="flex items-baseline gap-2 mb-4">
+              <span className="text-4xl font-black text-white">{formatEuro(netYoY.current)}</span>
+            </div>
+            <div>
+              <div className="text-xs text-slate-400 mb-1">VJ: {formatEuro(netYoY.previousYear)}</div>
+              <div className={'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-bold ' + (netPositive ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-red-500/20 bg-red-500/10 text-red-400')}>
+                {netPositive ? <Icon name="ArrowUpRight" size={12} /> : <Icon name="ArrowDownRight" size={12} />} {formatPercent(netYoY.deltaPct)} vs VJ
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#141824] rounded-[2rem] border border-slate-800 p-6">
+            <div className="text-[10px] font-bold text-slate-500 uppercase mb-2">Top-Risiko / Top-Chance</div>
+            {driver ? (
+              <>
+                <div className="flex items-baseline gap-2 mb-4">
+                  <span className="text-4xl font-black text-white">{formatEuro(driver.yoy.current)}</span>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400 mb-1">{driver.label} • VJ: {formatEuro(driver.yoy.previousYear)}</div>
+                  <div className={'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-bold ' + (driver.type === 'risk' ? 'border-orange-500/20 bg-orange-500/10 text-orange-400' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400')}>
+                    {driver.yoy.deltaAbs >= 0 ? <Icon name="ArrowUpRight" size={12} /> : <Icon name="ArrowDownRight" size={12} />} {formatPercent(driver.yoy.deltaPct)} vs VJ
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-slate-400 mt-4">Alles im grünen Bereich</div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // === INSIGHT CARDS (radar: chance + risiko, unified KPI layout) ===
+    const InsightCards = ({ periodData, period, onPeriodChange, focusMode }) => {
+      const revenuesYoY = (periodData.revenues || []).map(r => ({ ...r, yoy: toYoY(r.current, r.lastYear) }));
+      const costsYoY = (periodData.costs || []).map(c => ({ ...c, yoy: toYoY(c.current, c.lastYear) }));
+      const topChance = revenuesYoY.filter(r => r.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
+      const topRisk = costsYoY.filter(c => c.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
+      const isRevenueEmphasis = focusMode === 'revenue_up';
+      const isCostEmphasis = focusMode === 'cost_down';
+
+      return (
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold text-white px-1">Insights</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={'bg-[#141824] border rounded-[2rem] p-6 ' + (isRevenueEmphasis ? 'border-emerald-500/50 ring-2 ring-emerald-500/20' : 'border-slate-800')}>
+              <div className="flex justify-between items-center mb-2">
+                <div className="text-[10px] font-bold text-slate-500 uppercase">Umsatztreiber</div>
+                {isRevenueEmphasis && <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-bold">IM FOKUS</span>}
+              </div>
+              {topChance ? (
+                <>
+                  <div className="flex items-baseline gap-2 mb-4">
+                    <span className="text-4xl font-black text-white">{formatEuro(topChance.yoy.current)}</span>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-400 mb-1">{topChance.label} • VJ: {formatEuro(topChance.yoy.previousYear)}</div>
+                    <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-xs font-bold">
+                      <Icon name="ArrowUpRight" size={12} /> {formatPercent(topChance.yoy.deltaPct)} vs VJ
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-slate-400 mt-4">Keine besondere Chance ersichtlich.</div>
+              )}
+            </div>
+
+            <div className={'bg-[#141824] border rounded-[2rem] p-6 ' + (isCostEmphasis ? 'border-orange-500/50 ring-2 ring-orange-500/20' : 'border-slate-800')}>
+              <div className="flex justify-between items-center mb-2">
+                <div className="text-[10px] font-bold text-slate-500 uppercase">Kostenfokus</div>
+                {isCostEmphasis && <span className="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 text-[9px] font-bold">IM FOKUS</span>}
+              </div>
+              {topRisk ? (
+                <>
+                  <div className="flex items-baseline gap-2 mb-4">
+                    <span className="text-4xl font-black text-white">{formatEuro(topRisk.yoy.current)}</span>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-400 mb-1">{topRisk.label} • VJ: {formatEuro(topRisk.yoy.previousYear)}</div>
+                    <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-orange-500/20 bg-orange-500/10 text-orange-400 text-xs font-bold">
+                      <Icon name="ArrowUpRight" size={12} /> {formatPercent(topRisk.yoy.deltaPct)} vs VJ
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-slate-400 mt-4">Keine akute Kostensteigerung.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // === MONEY FLOW LIST VIEW (GOAL A1) ===
+    const MoneyFlowList = ({ data = DATA_CONFIG, period = 'month', onPeriodChange, onDrillDown }) => {
+      const { revenues, costs, totalRev, totalCost, totalRevLy, totalCostLy, net, netLy, netTrend } = computePeriodData(data, period);
+      const netYoY = toYoY(net, netLy);
+      const [selectedCategory, setSelectedCategory] = useState(null);
+
+      const drillDown = selectedCategory ? DATA_CONFIG.drillDowns[selectedCategory] : null;
+
+      return (
+        <div className="space-y-6 pb-24 animate-in">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-black text-white">Money Flow Übersicht</h2>
+            <div className="inline-flex items-center rounded-full bg-[#0a0d14] border border-slate-800 p-1 shadow-lg">
+              {[{ id: 'month', label: 'Monat' }, { id: 'year', label: 'Jahr' }].map((p) => (
+                <button key={p.id} onClick={() => onPeriodChange(p.id)} className={'px-3.5 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ' + (period === p.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300')}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={'p-6 rounded-3xl border-t-4 ' + (netYoY.deltaAbs >= 0 ? 'bg-slate-900/60 border-t-emerald-500' : 'bg-slate-900/60 border-t-red-500')}>
+            <div className="text-xs text-slate-500 font-bold uppercase mb-2">NETTO-CASHFLOW {period === 'year' ? 'JAHR BISHER' : 'MONAT'}</div>
+            <div className="flex justify-between items-end">
+              <div>
+                <div className="text-3xl font-black text-white">{formatEuro(net)}</div>
+                <div className="text-xs text-slate-400 mt-1">VJ: {formatEuro(netLy)}</div>
+              </div>
+              <div className={'px-3 py-1.5 rounded-full text-sm font-bold inline-flex items-center gap-1 border ' + (netYoY.deltaAbs >= 0 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300')}>
+                {netYoY.deltaAbs >= 0 ? <Icon name="ArrowUpRight" size={14} /> : <Icon name="ArrowDownRight" size={14} />}
+                {formatPercent(netYoY.deltaPct)}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><Icon name="TrendingUp" size={18} className="text-emerald-400" /> Einnahmen</h3>
+              <div className="space-y-2">
+                {revenues.map((r) => {
+                  const rYoY = toYoY(r.current, r.lastYear);
+                  return (
+                    <button key={r.id} onClick={() => setSelectedCategory(r.id)} className={'w-full text-left p-3 rounded-xl border transition-all ' + (selectedCategory === r.id ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-800 bg-slate-800/20 hover:border-slate-700')}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-bold text-white">{r.label}</span>
+                        <span className="text-sm font-bold text-emerald-300">{formatEuro(rYoY.current)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-slate-500">
+                        <span>VJ: {formatEuro(rYoY.previousYear)}</span>
+                        <span className="text-emerald-400 font-bold">{formatPercent(rYoY.deltaPct)}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><Icon name="TrendingDown" size={18} className="text-red-400" /> Ausgaben</h3>
+              <div className="space-y-2">
+                {costs.map((c) => {
+                  const cYoY = toYoY(c.current, c.lastYear);
+                  return (
+                    <button key={c.id} onClick={() => setSelectedCategory(c.id)} className={'w-full text-left p-3 rounded-xl border transition-all ' + (selectedCategory === c.id ? 'border-red-500 bg-red-500/10' : 'border-slate-800 bg-slate-800/20 hover:border-slate-700')}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-bold text-white">{c.label}</span>
+                        <span className="text-sm font-bold text-red-300">{formatEuro(cYoY.current)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-slate-500">
+                        <span>VJ: {formatEuro(cYoY.previousYear)}</span>
+                        <span className="text-red-400 font-bold">{formatPercent(cYoY.deltaPct)}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {selectedCategory && drillDown && (
+            <div className="p-6 rounded-3xl border border-slate-800 bg-[#0b0f19]">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-black text-white">{drillDown.title}</h3>
+                <button onClick={() => setSelectedCategory(null)} className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">Schliessen</button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                {(drillDown.items || []).map((item, idx) => {
+                  const itemYoY = toYoY(item.total, item.ly, period === 'year' ? 12 : 1);
+                  const isCost = drillDown.isCost;
+                  return (
+                    <div key={idx} className="bg-[#131722] border border-slate-800 p-3 rounded-lg flex justify-between items-center">
+                      <div>
+                        <div className="font-bold text-white text-sm">{item.name}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">{item.amount} {item.unit} • VJ: {formatEuro(itemYoY.previousYear)}</div>
+                      </div>
+                      <div className="text-right space-y-0.5">
+                        <div className={'font-mono font-bold text-sm ' + (isCost ? 'text-red-400' : 'text-emerald-400')}>{formatEuro(itemYoY.current)}</div>
+                        <div className={'text-xs font-bold ' + (itemYoY.deltaAbs >= 0 ? (isCost ? 'text-red-300' : 'text-emerald-300') : (isCost ? 'text-emerald-300' : 'text-red-300'))}>{formatPercent(itemYoY.deltaPct)}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {drillDown.insight && (
+                <div className={'p-4 rounded-lg flex gap-3 items-start border ' + (drillDown.insight.type === 'success' ? 'bg-emerald-500/5 border-emerald-500/20' : drillDown.insight.type === 'warning' ? 'bg-orange-500/5 border-orange-500/20' : 'bg-red-500/5 border-red-500/20')}>
+                  <Icon name="Lightbulb" className={'shrink-0 mt-0.5 ' + (drillDown.insight.type === 'success' ? 'text-emerald-400' : drillDown.insight.type === 'warning' ? 'text-orange-400' : 'text-red-400')} size={16} />
+                  <div>
+                    <h4 className={'font-bold text-sm mb-1 ' + (drillDown.insight.type === 'success' ? 'text-emerald-300' : drillDown.insight.type === 'warning' ? 'text-orange-300' : 'text-red-300')}>{drillDown.insight.title}</h4>
+                    <p className="text-xs text-slate-400">{drillDown.insight.text}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // === MONEY FLOW / BOW-TIE VIEW (full) ===
+    const BowTieFlow = ({ data = DATA_CONFIG, period = 'month', onPeriodChange, onDrillDown, onShowInsight }) => {
+      const [aiStatus, setAiStatus] = useState({ msg: null, thinking: false });
+      const [hovered, setHovered] = useState(null);
+      const width = 600, height = 420, centerX = width / 2, centerY = height / 2, centerR = 55;
+
+      const { revenues, costs, totalRev, totalCost, totalRevLy, totalCostLy, net, netLy, netTrend } = computePeriodData(data, period);
+      const profit = net;
+      const calcLayout = (items, startX, alignRight, totalSum) => {
+        let y = 35;
+        const minH = 38, gap = 12, avail = height - 70 - (items.length * gap);
+        const total = totalSum || items.reduce((a, b) => a + b.current, 0);
+        return items.map(item => {
+          const share = total > 0 ? item.current / total : 0;
+          let h = share * avail;
+          if (h < minH) h = minH;
+          const iy = y;
+          y += h + gap;
+          return { ...item, x: startX, y: iy, h, w: 135, isLarge: h > 40, textX: alignRight ? startX + 125 : startX + 10, align: alignRight ? 'end' : 'start' };
+        });
+      };
+      const left = calcLayout(revenues, 15, false, totalRev);
+      const right = calcLayout([...costs, { id: 'profit', label: 'Gewinn', current: profit, color: '#10b981', isProfit: true }], width - 150, true, totalCost + profit);
+      const handleAnalyze=async()=>{setAiStatus({msg:null,thinking:true});try{const r=await callLLMSimulator("Gemini","Finde den groessten Hebel.",{});setAiStatus({msg:r.aiResponse,thinking:false});}catch(e){setAiStatus({msg:"Fehler",thinking:false});}};
+      return (
+        <div className="w-full h-full relative flex flex-col items-center bg-gradient-to-br from-slate-900/60 to-slate-900/30 rounded-3xl border border-white/5 p-4 overflow-hidden shadow-2xl backdrop-blur-sm">
+          <div className="w-full flex justify-between items-center mb-4 z-20">
+            <div className="inline-flex items-center rounded-full bg-[#0a0d14] border border-slate-800 p-1 shadow-lg">
+              {[
+                { id: 'month', label: 'Monat' },
+                { id: 'year', label: 'Jahr' }
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => onPeriodChange && onPeriodChange(p.id)}
+                  className={'px-3.5 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ' + (period === p.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300')}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={'px-2.5 py-1 rounded-full text-[10px] font-semibold border ' + (net >= netLy ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300')}>
+                {net >= netLy ? <Icon name="ArrowUpRight" size={12}/> : <Icon name="ArrowDownRight" size={12}/>} {formatPercent(netTrend * 100)}
+              </div>
+              <button onClick={handleAnalyze} disabled={aiStatus.thinking} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 flex items-center gap-2 disabled:bg-slate-700 disabled:text-slate-400">{aiStatus.thinking?<><Icon name="Loader2" size={14} className="animate-spin"/> Analysiere...</>:<><Icon name="BrainCircuit" size={14}/> Quick Analyze</>}</button>
+            </div>
+          </div>
+          {aiStatus.msg&&(<div className="w-full mb-4 p-4 rounded-xl text-sm border border-indigo-500/20 bg-indigo-500/5 text-white flex items-start gap-3 animate-in fade-in"><Icon name="BrainCircuit" size={18} className="text-indigo-400 shrink-0 mt-0.5"/><p className="text-xs text-slate-300 flex-1">{aiStatus.msg}</p><button onClick={()=>setAiStatus({msg:null,thinking:false})} className="shrink-0"><Icon name="X" size={14} className="text-slate-500 hover:text-white"/></button></div>)}
+
+          <div className="w-full grid grid-cols-3 gap-2 mb-3 text-[11px]">
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+              <div className="text-emerald-200/80 uppercase font-semibold">Einnahmen</div>
+              <div className="font-mono text-white text-sm">{formatEuro(totalRev)}</div>
+              <div className="text-emerald-300 text-[10px]">VJ: {formatEuro(totalRevLy)}</div>
+            </div>
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3">
+              <div className="text-red-200/80 uppercase font-semibold">Ausgaben</div>
+              <div className="font-mono text-white text-sm">{formatEuro(totalCost)}</div>
+              <div className="text-red-300 text-[10px]">VJ: {formatEuro(totalCostLy)}</div>
+            </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-3">
+              <div className="text-slate-300 uppercase font-semibold">Netto</div>
+              <div className="font-mono text-white text-sm">{formatEuro(net)}</div>
+              <div className={"text-[10px] " + (net >= netLy ? 'text-emerald-300' : 'text-red-300')}>VJ: {formatEuro(netLy)}</div>
+            </div>
+          </div>
+
+          <svg viewBox={'0 0 '+width+' '+height} className="w-full h-full max-w-2xl" style={{pointerEvents:'auto'}}>
+            <defs><linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#3b82f6"/><stop offset="100%" stopColor="#6366f1"/></linearGradient></defs>
+            <circle cx={centerX} cy={centerY} r={centerR+12} fill="none" stroke="rgba(99,102,241,0.1)" strokeWidth="2"/><circle cx={centerX} cy={centerY} r={centerR+6} fill="none" stroke="rgba(99,102,241,0.2)" strokeWidth="1"/><circle cx={centerX} cy={centerY} r={centerR} fill="#0f172a" stroke="url(#cg)" strokeWidth="4"/>
+            <text x={centerX} y={centerY-10} textAnchor="middle" fill="white" fontSize="13" fontWeight="bold">NETTO</text><text x={centerX} y={centerY+12} textAnchor="middle" fill="#94a3b8" fontSize="12" fontWeight="600">{formatEuro(net)}</text>
+            <text x={centerX} y={centerY+30} textAnchor="middle" fill={net >= netLy ? '#34d399' : '#f87171'} fontSize="10" fontWeight="600">VJ: {formatEuro(netLy)} ({netLy!==0?formatPercent(netTrend*100):'+0.0%'})</text>
+            {left.map(item=>(<g key={item.id} onClick={()=>item.hasAlert?onShowInsight&&onShowInsight(item.id):onDrillDown&&onDrillDown(item.id)} onMouseEnter={()=>setHovered(item.id)} onMouseLeave={()=>setHovered(null)} style={{cursor:'pointer'}}><path d={'M '+(item.x+item.w)+' '+(item.y+item.h/2)+' C '+(centerX-90)+' '+(item.y+item.h/2)+', '+(centerX-90)+' '+centerY+', '+(centerX-centerR)+' '+centerY} fill="none" stroke={item.color} strokeWidth={Math.max(4,item.h*0.5)} opacity={hovered===item.id?0.4:0.12}/><rect x={item.x} y={item.y} width={item.w} height={item.h} rx="10" fill={item.color} opacity={hovered===item.id?1:0.9}/>{item.hasAlert&&<g transform={'translate('+(item.x+item.w-8)+','+(item.y-6)+')'}><circle r="12" fill="#ef4444" stroke="#050505" strokeWidth="2" className="animate-pulse"/><text x="0" y="5" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">!</text></g>}{item.isLarge?<><text x={item.textX} y={item.y+18} fill="white" fontSize="12" fontWeight="bold" textAnchor={item.align}>{item.label}</text><text x={item.textX} y={item.y+item.h-10} fill="white" fontSize="11" fontWeight="600" textAnchor={item.align}>{formatEuro(item.current)}</text></>:<text x={item.textX} y={item.y+item.h/2+4} fill="white" fontSize="11" fontWeight="bold" textAnchor={item.align}>{item.label}</text>}</g>))}
+            {right.map(item=>(<g key={item.id} onClick={()=>onDrillDown&&onDrillDown(item.id)} onMouseEnter={()=>setHovered(item.id)} onMouseLeave={()=>setHovered(null)} style={{cursor:'pointer'}}><path d={'M '+(centerX+centerR)+' '+centerY+' C '+(centerX+90)+' '+centerY+', '+(centerX+90)+' '+(item.y+item.h/2)+', '+item.x+' '+(item.y+item.h/2)} fill="none" stroke={item.color} strokeWidth={Math.max(4,item.h*0.5)} opacity={hovered===item.id?0.4:0.12}/><rect x={item.x} y={item.y} width={item.w} height={item.h} rx="10" fill={item.color} opacity={hovered===item.id?1:(item.isProfit?1:0.9)}/>{item.isLarge?<><text x={item.textX} y={item.y+18} fill="white" fontSize="12" fontWeight="bold" textAnchor={item.align}>{item.label}</text><text x={item.textX} y={item.y+item.h-10} fill="white" fontSize="11" fontWeight="600" textAnchor={item.align}>{formatEuro(item.current)}</text></>:<text x={item.textX} y={item.y+item.h/2+4} fill="white" fontSize="11" fontWeight="bold" textAnchor={item.align}>{item.label}</text>}</g>))}
+          </svg>
+        </div>
+      );
+    };
+
+    // === DRILLDOWN VIEW (YoY badges) ===
+    const DrillDownView = ({ categoryId, onClose, data, period }) => {
+      const details = data.drillDowns[categoryId] || { title: "Details", items: [] };
+      const insight = details.insight;
+      const isCost = details.isCost;
+      const isProfit = details.isProfit;
+      const scale = period === 'year' ? 12 : 1;
+
+      const toYoY = (item) => {
+        const current = (item.total || 0) * scale;
+        const previousYear = (item.ly || 0) * scale;
+        const deltaAbs = current - previousYear;
+        const deltaPct = previousYear !== 0 ? (deltaAbs / Math.abs(previousYear)) * 100 : 0;
+        return { current, previousYear, deltaAbs, deltaPct };
+      };
+
+      return (
+        <div className="w-full h-full bg-[#0b0f19] rounded-3xl border border-slate-800 p-6 animate-in slide-in-from-right relative overflow-hidden">
+          <div className="flex justify-between items-center mb-8 relative z-10">
+            <div className="flex items-center gap-3">
+              <button onClick={onClose} className="p-2 bg-slate-800 rounded-full hover:bg-slate-700 text-slate-300"><Icon name="ArrowRightLeft" size={18} /></button>
+              <div>
+                <h2 className="text-2xl font-black text-white leading-none">{details.title}</h2>
+                <span className="text-xs text-slate-500 font-bold uppercase">Datenquelle: Kassen-Import</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <div className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs font-bold text-slate-300 flex items-center gap-2">
+                <Icon name="Calendar" size={12} /> {period === 'year' ? 'YTD' : 'Monat'}
+              </div>
+              <button className="p-2 bg-indigo-600 rounded-lg text-white"><Icon name="FileSpreadsheet" size={16} /></button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10 max-h-[60vh] overflow-y-auto">
+            {(details.items || []).map((item, idx) => {
+              const yoy = toYoY(item);
+              const deltaColor = yoy.deltaAbs >= 0 ? (isCost ? 'text-red-400' : 'text-emerald-400') : (isCost ? 'text-emerald-400' : 'text-red-400');
+              return (
+                <div key={idx} className="bg-[#131722] border border-slate-800 p-4 rounded-xl flex justify-between items-center hover:border-slate-600">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-white font-bold">{item.name}</span>
+                      {item.status === 'danger' && <Icon name="AlertTriangle" size={12} className="text-red-500" />}
+                      {item.status === 'star' && <Icon name="Star" size={12} className="text-yellow-500" fill="currentColor" />}
+                      {item.status === 'warning' && <Icon name="AlertCircle" size={12} className="text-orange-500" />}
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                      <span>{Math.abs(item.amount)} {item.unit}</span>
+                      <span className="text-slate-700">|</span>
+                      <span>VJ: {formatEuro(yoy.previousYear)}</span>
+                    </div>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <div className={'font-mono font-bold ' + (isCost ? 'text-red-400' : isProfit ? 'text-emerald-400' : 'text-white')}>
+                      {formatEuro(yoy.current)}
+                    </div>
+                    <div className={'text-[11px] font-bold inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ' + (yoy.deltaAbs >= 0 ? (isCost ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300') : (isCost ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300'))}>
+                      {yoy.deltaAbs >= 0 ? <Icon name="ArrowUpRight" size={10} /> : <Icon name="ArrowDownRight" size={10} />}
+                      {formatPercent(yoy.deltaPct)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {insight && (
+            <div className={'mt-6 p-4 rounded-xl flex gap-3 items-start relative z-10 border ' + (insight.type === 'success' ? 'bg-emerald-500/5 border-emerald-500/20' : insight.type === 'warning' ? 'bg-orange-500/5 border-orange-500/20' : 'bg-red-500/5 border-red-500/20')}>
+              <Icon name="Lightbulb" className={'shrink-0 mt-0.5 ' + (insight.type === 'success' ? 'text-emerald-400' : insight.type === 'warning' ? 'text-orange-400' : 'text-red-400')} size={18} />
+              <div>
+                <h4 className={'font-bold text-sm mb-1 ' + (insight.type === 'success' ? 'text-emerald-300' : insight.type === 'warning' ? 'text-orange-300' : 'text-red-300')}>{insight.title}</h4>
+                <p className="text-slate-400 text-xs mb-2">{insight.text}</p>
+                {insight.action && (<button className="text-xs font-bold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-white flex items-center gap-2"><Icon name="Check" size={12} /> {insight.action}</button>)}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // === CUSTOM ARTICLE FORM ===
+    const CustomArticleForm = ({ onSubmit, onCancel }) => {
+      const [name, setName] = useState("");
+      const [pricePerUnit, setPricePerUnit] = useState("");
+      const [costPerUnit, setCostPerUnit] = useState("");
+      const standardMonthlyQuantity = 100; // Standardmenge: 100 Stück/Monat
+      
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (name.trim() && pricePerUnit && costPerUnit) {
+          // Berechne monatliche Basis: Preis × Menge und Wareneinsatz × Menge
+          const monthlyRevenue = parseFloat(pricePerUnit) * standardMonthlyQuantity;
+          const monthlyCost = parseFloat(costPerUnit) * standardMonthlyQuantity;
+          onSubmit(name, monthlyRevenue, monthlyCost);
+          setName("");
+          setPricePerUnit("");
+          setCostPerUnit("");
+        }
+      };
+      
+      return (
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <input 
+            type="text" 
+            placeholder="Artikel-Name (z.B. Falafel Pita)" 
+            value={name} 
+            onChange={e => setName(e.target.value)} 
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-indigo-500 outline-none"
+          />
+          <p className="text-xs text-slate-400 italic">Die Sandbox berechnet monatlich basierend auf {standardMonthlyQuantity} Stück/Monat.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <input 
+              type="number" 
+              step="0.01"
+              placeholder="Preis pro Stück (€)" 
+              value={pricePerUnit} 
+              onChange={e => setPricePerUnit(e.target.value)} 
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-emerald-500 outline-none"
+            />
+            <input 
+              type="number" 
+              step="0.01"
+              placeholder="Wareneinsatz pro Stück (€)" 
+              value={costPerUnit} 
+              onChange={e => setCostPerUnit(e.target.value)} 
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-red-500 outline-none"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button type="submit" className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg">
+              Hinzufügen
+            </button>
+            <button type="button" onClick={onCancel} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg">
+              Abbrechen
+            </button>
+          </div>
+        </form>
+      );
+    };
+
+    // === SANDBOX VIEW (full period-aware) ===
+    const SandboxView = ({ onCreateMission, data = DATA_CONFIG, onLlmRequest, period = 'month', focusMode = 'none' }) => {
+      const [scope, setScope] = useState('global');
+      const [selectedArticle, setSelectedArticle] = useState(null);
+      const [showCustomArticleForm, setShowCustomArticleForm] = useState(false);
+      const [customArticles, setCustomArticles] = useState([]);
+      const [params, setParams] = useState({price:0,volume:0,efficiency:0});
+      const [input, setInput] = useState("");
+      const [aiMsg, setAiMsg] = useState(null);
+      const [isThinking, setIsThinking] = useState(false);
+      const [horizon, setHorizon] = useState(30);
+      
+      const periodData = useMemo(() => computePeriodData(data, period), [data, period]);
+      
+      const getArticlesForScope = useCallback(() => {
+        // Determine which drillDown to show based on scope
+        let scopeKey = 'food';
+        if (scope === 'food') scopeKey = 'food';
+        if (scope === 'drinks') scopeKey = 'drinks';
+        if (scope === 'articles') scopeKey = 'food'; // Show food items for custom article context
+        // Strategic scopes don't show predefined articles, only custom
+        if (['global', 'variable', 'personnel', 'operations', 'packaging'].includes(scope)) {
+          return customArticles.filter(ca => ca.scope === scope);
+        }
+        const drillDown = DATA_CONFIG.drillDowns[scopeKey];
+        const predefined = drillDown ? drillDown.items || [] : [];
+        const customInScope = customArticles.filter(ca => ca.scope === scope);
+        return [...predefined, ...customInScope];
+      }, [scope, customArticles]);
+      
+      const getBase = useCallback(() => {
+        const articles = getArticlesForScope();
+        
+        // If article selected, use its baseline
+        if (selectedArticle !== null && articles[selectedArticle]) {
+          const article = articles[selectedArticle];
+          const scale = period === 'year' ? 12 : 1;
+          return {
+            rev: (article.total || 0) * scale,
+            cost: (article.total || 0) * scale * 0.25,
+            revLy: (article.ly || 0) * scale,
+            costLy: (article.ly || 0) * scale * 0.25,
+            label: article.name
+          };
+        }
+        
+        if (scope === 'global') {
+          return {
+            rev: periodData.totalRev,
+            cost: periodData.totalCost,
+            revLy: periodData.totalRevLy,
+            costLy: periodData.totalCostLy,
+            label: "Gesamtbetrieb"
+          };
+        }
+        if (scope === 'variable') {
+          const cogsCost = periodData.costs.find(c => c.id === 'cogs');
+          return {
+            rev: periodData.totalRev,
+            cost: cogsCost ? cogsCost.current : 0,
+            revLy: periodData.totalRevLy,
+            costLy: cogsCost ? cogsCost.lastYear : 0,
+            label: "Variable Kosten (Wareneinsatz)"
+          };
+        }
+        if (scope === 'personnel') {
+          const personnelCost = periodData.costs.find(c => c.id === 'personnel');
+          return {
+            rev: periodData.totalRev,
+            cost: personnelCost ? personnelCost.current : 0,
+            revLy: periodData.totalRevLy,
+            costLy: personnelCost ? personnelCost.lastYear : 0,
+            label: "Personal"
+          };
+        }
+        if (scope === 'operations') {
+          const rentCost = periodData.costs.find(c => c.id === 'rent');
+          const energyCost = periodData.costs.find(c => c.id === 'energy');
+          const otherCost = periodData.costs.find(c => c.id === 'other');
+          const totalOps = (rentCost?.current || 0) + (energyCost?.current || 0) + (otherCost?.current || 0);
+          const totalOpsLy = (rentCost?.lastYear || 0) + (energyCost?.lastYear || 0) + (otherCost?.lastYear || 0);
+          return {
+            rev: periodData.totalRev,
+            cost: totalOps,
+            revLy: periodData.totalRevLy,
+            costLy: totalOpsLy,
+            label: "Betriebskosten (Miete, Energie, Sonstiges)"
+          };
+        }
+        if (scope === 'food') {
+          const foodData = periodData.revenues.find(r => r.id === 'food') || { current: 0, lastYear: 0 };
+          const foodCost = periodData.costs.find(c => c.id === 'cogs');
+          return {
+            rev: foodData.current,
+            cost: foodCost ? foodCost.current * 0.6 : 0,
+            revLy: foodData.lastYear,
+            costLy: foodCost ? foodCost.lastYear * 0.6 : 0,
+            label: "Speisen"
+          };
+        }
+        if (scope === 'drinks') {
+          const drinksData = periodData.revenues.find(r => r.id === 'drinks') || { current: 0, lastYear: 0 };
+          const drinksCost = periodData.costs.find(c => c.id === 'cogs');
+          return {
+            rev: drinksData.current,
+            cost: drinksCost ? drinksCost.current * 0.4 : 0,
+            revLy: drinksData.lastYear,
+            costLy: drinksCost ? drinksCost.lastYear * 0.4 : 0,
+            label: "Getränke"
+          };
+        }
+        if (scope === 'packaging') {
+          const packagingCost = periodData.costs.find(c => c.id === 'cogs');
+          return {
+            rev: periodData.totalRev,
+            cost: packagingCost ? packagingCost.current * 0.1 : 0,
+            revLy: periodData.totalRevLy,
+            costLy: packagingCost ? packagingCost.lastYear * 0.1 : 0,
+            label: "Verpackung"
+          };
+        }
+        const pizzaItem = DATA_CONFIG.drillDowns.food?.items?.find(i => i.name.includes('Pizza')) || { total: 9500, ly: 8800 };
+        const scale = period === 'year' ? 12 : 1;
+        return {
+          rev: pizzaItem.total * scale,
+          cost: pizzaItem.total * scale * 0.25,
+          revLy: (pizzaItem.ly || 0) * scale,
+          costLy: (pizzaItem.ly || 0) * scale * 0.25,
+          label: "Artikel"
+        };
+      }, [scope, selectedArticle, periodData, period, getArticlesForScope]);
+      
+      const base = getBase();
+      const baseProfit = base.rev - base.cost;
+      const baseProfitLy = base.revLy - base.costLy;
+      
+      const scenarioRev = base.rev * (1 + params.price / 100) * (1 + params.volume / 100);
+      const effectiveBaseCost = base.cost / (1 + params.volume / 100);
+      const scenarioCost = effectiveBaseCost * (1 - params.efficiency / 100) * (1 + params.volume / 100);
+      const scenarioProfit = scenarioRev - scenarioCost;
+      
+      const costDelta = scenarioCost - base.cost;
+      const costDeltaPct = base.cost !== 0 ? (costDelta / base.cost) * 100 : 0;
+      const delta = scenarioProfit - baseProfit;
+      const deltaPct = baseProfit !== 0 ? (delta / Math.abs(baseProfit)) * 100 : 0;
+      
+      // B.2) Compute horizon-scaled Deckungsbeitrag impact
+      const deltaPerMonth = delta;
+      const horizonImpactDB = deltaPerMonth * (horizon / 30);
+      const horizonUmsatzEffect = (scenarioRev - base.rev) * (horizon / 30);
+      const horizonCostEffect = (scenarioCost - base.cost) * (horizon / 30);
+      const reset = ()=>{setParams({price:0,volume:0,efficiency:0}); setSelectedArticle(null);};
+      const handleAddCustomArticle = (name, monthlyRevenue, monthlyCost) => {
+        const newArticle = { name, total: monthlyRevenue, ly: 0, scope, custom: true };
+        setCustomArticles([...customArticles, newArticle]);
+        setSelectedArticle(customArticles.length);
+        setShowCustomArticleForm(false);
+      };
+      const handleAsk = async(e)=>{e.preventDefault();if(!input.trim())return;setIsThinking(true);setAiMsg(null);const llmHandler = onLlmRequest || ((prompt,p)=>callLLMSimulator('Gemini', prompt, p));try{const r=await llmHandler(input,params);setAiMsg(r.aiResponse);}catch(err){setAiMsg("Fehler");}finally{setIsThinking(false);setInput("");}};
+      const articles = getArticlesForScope();
+      return (
+        <div className="space-y-6 pb-24 animate-in fade-in">
+          <div className="flex flex-col gap-4"><div className="flex justify-between items-end"><div><h2 className="text-2xl font-black text-white flex items-center gap-2"><Icon name="Sparkles" className="text-indigo-400"/> Sandbox</h2><p className="text-xs text-slate-400 mt-1">Simulation von Szenarien & Produkten.</p></div><button onClick={reset} className="text-xs font-bold text-slate-500 hover:text-white flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-slate-800"><Icon name="RotateCcw" size={12}/> Reset</button></div>
+            <div className="space-y-2"><p className="text-[10px] font-bold text-slate-500 uppercase">Strategische Szenarien</p><div className="bg-[#0a0d14] p-1 rounded-xl border border-slate-800 grid grid-cols-2 gap-1"><button onClick={()=>{setScope('global'); setSelectedArticle(null);}} className={'py-2 px-2 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap flex items-center justify-center gap-1 '+(scope==='global'?'bg-indigo-600 text-white':'text-slate-500 hover:text-white')}><Icon name="Layers" size={12}/> Gesamtbetrieb</button><button onClick={()=>{setScope('variable'); setSelectedArticle(null);}} className={'py-2 px-2 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap flex items-center justify-center gap-1 '+(scope==='variable'?'bg-indigo-600 text-white':'text-slate-500 hover:text-white')}><Icon name="TrendingDown" size={12}/> Variable K.</button><button onClick={()=>{setScope('personnel'); setSelectedArticle(null);}} className={'py-2 px-2 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap flex items-center justify-center gap-1 '+(scope==='personnel'?'bg-indigo-600 text-white':'text-slate-500 hover:text-white')}><Icon name="Users" size={12}/> Personal</button><button onClick={()=>{setScope('operations'); setSelectedArticle(null);}} className={'py-2 px-2 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap flex items-center justify-center gap-1 '+(scope==='operations'?'bg-indigo-600 text-white':'text-slate-500 hover:text-white')}><Icon name="Building2" size={12}/> Betrieb</button></div></div>
+            <div className="space-y-2"><p className="text-[10px] font-bold text-slate-500 uppercase">Produktkategorien</p><div className="bg-[#0a0d14] p-1 rounded-xl border border-slate-800 grid grid-cols-2 gap-1"><button onClick={()=>{setScope('food'); setSelectedArticle(null);}} className={'py-2 px-2 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap flex items-center justify-center gap-1 '+(scope==='food'?'bg-emerald-600 text-white':'text-slate-500 hover:text-white')}><Icon name="Utensils" size={12}/> Speisen</button><button onClick={()=>{setScope('drinks'); setSelectedArticle(null);}} className={'py-2 px-2 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap flex items-center justify-center gap-1 '+(scope==='drinks'?'bg-emerald-600 text-white':'text-slate-500 hover:text-white')}><Icon name="Coffee" size={12}/> Getränke</button><button onClick={()=>{setScope('packaging'); setSelectedArticle(null);}} className={'py-2 px-2 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap flex items-center justify-center gap-1 '+(scope==='packaging'?'bg-emerald-600 text-white':'text-slate-500 hover:text-white')}><Icon name="Package" size={12}/> Verpackung</button><button onClick={()=>{setScope('articles'); setSelectedArticle(null);}} className={'py-2 px-2 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap flex items-center justify-center gap-1 '+(scope==='articles'?'bg-orange-500 text-white':'text-slate-500 hover:text-white')}><Icon name="ShoppingCart" size={12}/> Artikel</button></div></div>
+          </div>
+          {articles.length > 1 && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-500 uppercase">Artikel</p>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => setSelectedArticle(null)} className={'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase border transition-all ' + (selectedArticle === null ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300' : 'border-slate-700 text-slate-500 hover:text-slate-300')}>
+                  Alle
+                </button>
+                {articles.map((article, idx) => (
+                  <button key={idx} onClick={() => setSelectedArticle(idx)} className={'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase border transition-all ' + (selectedArticle === idx ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300' : 'border-slate-700 text-slate-500 hover:text-slate-300')}>
+                    {article.name || 'Item ' + (idx + 1)}
+                  </button>
+                ))}
+                <button onClick={() => setShowCustomArticleForm(!showCustomArticleForm)} className="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase border border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-600">
+                  + Artikel
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-500 mt-2">Artikel basieren auf deinem Kassen-Import. In dieser Demo sind einige Beispielartikel vordefiniert.</p>
+            </div>
+          )}
+          {showCustomArticleForm && (
+            <div className="bg-[#0a0d14] border border-slate-800 rounded-2xl p-4 space-y-3">
+              <p className="text-xs font-bold text-white">Eigener Artikel</p>
+              <CustomArticleForm onSubmit={handleAddCustomArticle} onCancel={() => setShowCustomArticleForm(false)} />
+            </div>
+          )}
+          <div className="bg-[#141824] p-6 rounded-3xl border border-slate-800 shadow-xl space-y-8">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <span className="text-xs font-bold text-slate-500 uppercase">Fokus: <span className="text-white">{base.label}</span></span>
+              <div className="text-right">
+                <span className="text-xs font-mono text-slate-600">Basis ({period === 'year' ? 'YTD' : 'Monat'})</span>
+                <div className="text-xs font-bold text-white">{formatEuro(base.rev)}</div>
+              </div>
+            </div>
+            {(() => {
+              const sliderConfig = {
+                'global': {
+                  slider1: { label: 'Durchschn. Preis', icon: 'TrendingUp', desc: 'Preiserhöhung aller Kategorien' },
+                  slider2: { label: 'Volumen', icon: 'Briefcase', desc: 'Mehr Gäste/Umsatz' },
+                  slider3: { label: 'Effizienz', icon: 'Scissors', desc: 'Wareneinsatz sparen' }
+                },
+                'variable': {
+                  slider1: { label: 'COGS-Anteil', icon: 'TrendingDown', desc: 'Wareneinsatz-Quote reduzieren' },
+                  slider2: { label: 'Umsatzsteigerung', icon: 'Briefcase', desc: 'Mehr Volumen' },
+                  slider3: { label: 'Einsparungen', icon: 'Scissors', desc: 'Verhandlungen, Prozess-Optimierung' }
+                },
+                'personnel': {
+                  slider1: { label: 'Personalkosten', icon: 'Users', desc: 'Löhne, Nebenkosten' },
+                  slider2: { label: 'Produktivität', icon: 'Briefcase', desc: 'Mehr Umsatz mit gleicher Besetzung' },
+                  slider3: { label: 'Effizienz', icon: 'Scissors', desc: 'Bessere Schicht-Planung' }
+                },
+                'operations': {
+                  slider1: { label: 'Fixkosten', icon: 'Building2', desc: 'Miete, Energie, Sonstiges' },
+                  slider2: { label: 'Auslastung', icon: 'Briefcase', desc: 'Höherer Umsatz' },
+                  slider3: { label: 'Einsparungen', icon: 'Scissors', desc: 'Energieoptimierung, Verhandlungen' }
+                },
+                'food': {
+                  slider1: { label: 'Speisen-Preis', icon: 'TrendingUp', desc: 'Menü-Preiserhöhung' },
+                  slider2: { label: 'Absatz', icon: 'Briefcase', desc: 'Mehr verkaufte Portionen' },
+                  slider3: { label: 'Wareneinsatz', icon: 'Scissors', desc: 'Rezept-Optimierung' }
+                },
+                'drinks': {
+                  slider1: { label: 'Getränk-Preis', icon: 'TrendingUp', desc: 'Getränk-Preise erhöhen' },
+                  slider2: { label: 'Absatz', icon: 'Briefcase', desc: 'Mehr Getränke pro Gast' },
+                  slider3: { label: 'Wareneinsatz', icon: 'Scissors', desc: 'Getränke-Mix optimieren' }
+                },
+                'packaging': {
+                  slider1: { label: 'Verpackungskosten', icon: 'Package', desc: 'Lieferanten-Verhandlung' },
+                  slider2: { label: 'Volumen', icon: 'Briefcase', desc: 'Mehr Packungen' },
+                  slider3: { label: 'Material-Einsparung', icon: 'Scissors', desc: 'Nachhaltigere Materialien' }
+                },
+                'articles': {
+                  slider1: { label: 'Artikel-Preis', icon: 'TrendingUp', desc: 'Höherer Preis pro Stück' },
+                  slider2: { label: 'Verkaufsmenge', icon: 'Briefcase', desc: 'Mehr verkaufte Einheiten' },
+                  slider3: { label: 'Wareneinsatz', icon: 'Scissors', desc: 'Kosten pro Stück sparen' }
+                }
+              };
+              const config = sliderConfig[scope] || sliderConfig['global'];
+              return (
+                <>
+                  <div><div className="flex justify-between text-xs font-bold mb-3"><span className="text-slate-400 flex items-center gap-2"><Icon name={config.slider1.icon} size={14}/> {config.slider1.label}</span><span className={'px-2 py-0.5 rounded '+(params.price>0?'bg-emerald-500/20 text-emerald-400':params.price<0?'bg-red-500/20 text-red-400':'bg-slate-800 text-white')}>{params.price>0?'+':''}{params.price}%</span></div><input type="range" min="-20" max="30" value={params.price} onChange={e=>setParams({...params,price:parseInt(e.target.value)})} className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"/><p className="text-[10px] text-slate-500 mt-2 italic">⇄ {config.slider1.desc}</p></div>
+                  <div><div className="flex justify-between text-xs font-bold mb-3"><span className="text-slate-400 flex items-center gap-2"><Icon name={config.slider2.icon} size={14}/> {config.slider2.label}</span><span className={'px-2 py-0.5 rounded '+(params.volume>0?'bg-emerald-500/20 text-emerald-400':params.volume<0?'bg-red-500/20 text-red-400':'bg-slate-800 text-white')}>{params.volume>0?'+':''}{params.volume}%</span></div><input type="range" min="-30" max="30" value={params.volume} onChange={e=>setParams({...params,volume:parseInt(e.target.value)})} className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"/><p className="text-[10px] text-slate-500 mt-2 italic">⇄ {config.slider2.desc}</p></div>
+                  <div><div className="flex justify-between text-xs font-bold mb-3"><span className="text-slate-400 flex items-center gap-2"><Icon name={config.slider3.icon} size={14}/> {config.slider3.label}</span><span className={'px-2 py-0.5 rounded '+(params.efficiency>0?'bg-emerald-500/20 text-emerald-400':params.efficiency<0?'bg-red-500/20 text-red-400':'bg-slate-800 text-white')}>{params.efficiency>0?'+':''}{params.efficiency}%</span></div><input type="range" min="-10" max="20" value={params.efficiency} onChange={e=>setParams({...params,efficiency:parseInt(e.target.value)})} className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-orange-500"/><p className="text-[10px] text-slate-500 mt-2 italic">⇄ {config.slider3.desc}</p></div>
+                </>
+              );
+            })()}
+          </div>
+          <div className={'p-6 rounded-3xl border-t-4 shadow-2xl relative overflow-hidden '+(horizonImpactDB>=0?'bg-slate-900 border-t-emerald-500':'bg-slate-900 border-t-red-500')}>
+            <div className="relative z-10 space-y-4">
+              <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-700">
+                <div className="inline-flex items-center rounded-full bg-[#0a0d14] border border-slate-800 p-1 shadow-lg gap-1">
+                  {[30, 60, 90].map((h) => (
+                    <button key={h} onClick={() => setHorizon(h)} className={'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ' + (horizon === h ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300')}>
+                      {h} Tage
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Impact in {horizon} Tagen</div>
+                  <div className="text-2xl font-black text-white">{horizonImpactDB > 0 ? '+' : ''}{formatEuro(horizonImpactDB)}</div>
+                  <div className="text-xs text-slate-500">Deckungsbeitrag</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Szenario ({period === 'year' ? 'YTD' : 'Monat'})</div>
+                  <div className="text-2xl font-black text-white">{formatEuro(scenarioProfit)}</div>
+                  <div className="text-xs text-slate-600">Baseline: {formatEuro(baseProfit)}</div>
+                </div>
+              </div>
+              <div className="pt-3 border-t border-slate-700 text-xs space-y-2">
+                <div className="space-y-1 mb-3 pb-3 border-b border-slate-700/50">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Umsatz-Effekt ({horizon} Tage):</span>
+                    <span className={'font-bold ' + (horizonUmsatzEffect >= 0 ? 'text-emerald-400' : 'text-red-400')}>{horizonUmsatzEffect >= 0 ? '+' : ''}{formatEuro(horizonUmsatzEffect)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Wareneinsatz-Effekt ({horizon} Tage):</span>
+                    <span className={'font-bold ' + (horizonCostEffect <= 0 ? 'text-emerald-400' : 'text-red-400')}>{horizonCostEffect <= 0 ? '' : '+'}{formatEuro(horizonCostEffect)}</span>
+                  </div>
+                </div>
+                <div className="flex justify-between text-slate-500">
+                  <span>Umsatz Baseline ({period === 'year' ? 'YTD' : 'Monat'}):</span>
+                  <span className="text-slate-300 font-mono">{formatEuro(base.rev)}</span>
+                </div>
+                <div className="flex justify-between text-slate-500">
+                  <span>Wareneinsatz Baseline:</span>
+                  <span className="text-slate-300 font-mono">{formatEuro(base.cost)}</span>
+                </div>
+                <div className="flex justify-between text-slate-500">
+                  <span>Wareneinsatz Szenario:</span>
+                  <span className={'font-mono font-bold ' + (costDelta <= 0 ? 'text-emerald-400' : 'text-red-400')}>{formatEuro(scenarioCost)} <span className="text-slate-500">({costDelta <= 0 ? '' : '+'}{costDeltaPct.toFixed(1)}%)</span></span>
+                </div>
+              </div>
+              {baseProfitLy > 0 && (
+                <div className="pt-3 border-t border-slate-800/50 flex justify-between text-xs">
+                  <span className="text-slate-500">VJ (Baseline): {formatEuro(baseProfitLy)}</span>
+                  <span className={'font-bold ' + (baseProfit >= baseProfitLy ? 'text-emerald-400' : 'text-red-400')}>
+                    {baseProfit >= baseProfitLy ? '+' : ''}{formatPercent(((baseProfit - baseProfitLy) / Math.abs(baseProfitLy)) * 100)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="relative mt-8">{isThinking&&(<div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center rounded-xl z-20"><Icon name="Loader2" size={24} className="text-indigo-400 animate-spin"/><span className="text-white text-sm ml-3">KI prueft...</span></div>)}{aiMsg&&<div className="mb-3 p-4 rounded-xl text-sm border border-indigo-500/20 bg-indigo-500/5 text-white flex items-start gap-3"><Icon name="BrainCircuit" size={18} className="text-indigo-400 shrink-0 mt-0.5"/><p className="text-xs text-slate-300">{aiMsg}</p></div>}<form onSubmit={handleAsk} className="relative"><input value={input} onChange={e=>setInput(e.target.value)} placeholder={(() => {
+                const focusPlaceholders = {
+                  'cost_down': `Frag die KI: Wie stark senkt dieses Szenario meine Kosten in ${horizon} Tagen?`,
+                  'revenue_up': `Frag die KI: Ist diese Umsatzsteigerung in ${horizon} Tagen realistisch?`,
+                  'anomalies': `Frag die KI: Gibt es unerwartete Effekte in diesem Szenario?`,
+                  'mix_synergy': `Frag die KI: Welche Mix-Synergien entstehen in ${horizon} Tagen?`,
+                  'tier_mode': `Frag die KI: Welche Risiken hat dieses aggressive Szenario in ${horizon} Tagen?`,
+                  'none': "Frag die KI: 'Ist 10% Preiserhoehung realistisch?'"
+                };
+                return focusPlaceholders[focusMode] || focusPlaceholders['none'];
+              })()} className="w-full bg-[#0a0d14] border border-slate-700 rounded-xl px-4 py-3.5 pr-12 text-sm text-white placeholder:text-slate-600 focus:border-indigo-500 outline-none"/><button type="submit" className="absolute right-2 top-2 p-2 bg-indigo-600 rounded-lg text-white disabled:opacity-50" disabled={isThinking}><Icon name="Send" size={16}/></button></form></div>
+        </div>
+      );
+    };
+
+    // === MISSIONS OVERLAY ===
+    const MissionsOverlay = ({ missions, onClose, onComplete, onTogglePinned, onAccept }) => {
+      return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl max-h-[85vh] bg-[#0a0d14] border border-slate-800 rounded-3xl overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-[#0a0d14] border-b border-slate-800 px-6 py-4 flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-black text-white">Alle Missionen</h2>
+                <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Potenziale pro Monat</p>
+              </div>
+              <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
+                <Icon name="X" size={20} className="text-slate-500" />
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              {missions.map(m => (
+                <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/50' : 'border-slate-800')}>
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{m.category}</span>
+                    <button onClick={() => onTogglePinned(m.id)} className="p-1 hover:bg-slate-700 rounded transition-all">
+                      <Icon name="Star" size={16} className={m.pinned ? "text-yellow-400 fill-yellow-400" : "text-slate-600"} />
+                    </button>
+                  </div>
+                  <h4 className="font-bold text-white text-lg mb-1">{m.title}</h4>
+                  <p className="text-xs text-slate-400 mb-3">{m.desc}</p>
+                  <div className="text-sm font-bold text-emerald-400 mb-4">
+                    +{m.impactPerMonth} EUR / Monat
+                  </div>
+                  {m.status === 'open' && (
+                    <button onClick={() => onAccept(m.id)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                      Mission starten
+                    </button>
+                  )}
+                  {m.status === 'active' && (
+                    <button onClick={() => onComplete(m.id)} className="w-full py-3 bg-white text-slate-950 rounded-xl text-xs font-bold hover:bg-slate-100 flex items-center justify-center gap-2">
+                      ✓ Erledigt
+                    </button>
+                  )}
+                  {m.status === 'completed' && (
+                    <div className="w-full py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                      ✓ Abgeschlossen
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // === JOURNAL DETAIL ===
+    const JournalDetail = ({ type = 'month', onBack }) => {
+      const period = type === 'year' ? 'year' : 'month';
+      const periodData = useMemo(() => computePeriodData(DATA_CONFIG, period), [period]);
+      const netYoY = toYoY(periodData.net, periodData.netLy);
+      const topRevenue = [...periodData.revenues].sort((a, b) => toYoY(b.current, b.lastYear).deltaAbs - toYoY(a.current, a.lastYear).deltaAbs)[0];
+      const topCost = [...periodData.costs].sort((a, b) => toYoY(b.current, b.lastYear).deltaAbs - toYoY(a.current, a.lastYear).deltaAbs)[0];
+      const revYoY = topRevenue ? toYoY(topRevenue.current, topRevenue.lastYear) : { current: 0, previousYear: 0, deltaPct: 0, deltaAbs: 0 };
+      const costYoY = topCost ? toYoY(topCost.current, topCost.lastYear) : { current: 0, previousYear: 0, deltaPct: 0, deltaAbs: 0 };
+      const drill = topCost ? DATA_CONFIG.drillDowns[topCost.id] : null;
+      const scale = period === 'year' ? 12 : 1;
+      return (
+        <div className="space-y-4 bg-[#0a0d14] border border-slate-800 rounded-3xl p-6 shadow-2xl animate-in fade-in">
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="text-[10px] font-black uppercase text-slate-500">{type === 'year' ? 'Jahresvergleich' : 'Monatsbericht'}</div>
+              <h3 className="text-2xl font-black text-white">Logbuch Report</h3>
+              <p className="text-xs text-slate-400">Netto, Treiber und Drilldowns basierend auf Kassen-Import.</p>
+            </div>
+            <button onClick={onBack} className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 flex items-center gap-2">
+              <Icon name="ArrowLeft" size={14} /> Zurück
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-4 rounded-2xl bg-[#141824] border border-slate-800">
+              <div className="text-[10px] font-bold uppercase text-slate-400 mb-1">Netto</div>
+              <div className="text-2xl font-black text-white">{formatEuro(periodData.net)}</div>
+              <div className={'text-xs font-bold flex items-center gap-1 ' + (netYoY.deltaAbs >= 0 ? 'text-emerald-300' : 'text-red-300')}>
+                {netYoY.deltaAbs >= 0 ? <Icon name="ArrowUpRight" size={12} /> : <Icon name="ArrowDownRight" size={12} />} {formatPercent(netYoY.deltaPct)} vs VJ
+              </div>
+            </div>
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+              <div className="text-[10px] font-bold uppercase text-emerald-200 mb-1">Top Umsatz</div>
+              <div className="text-lg font-black text-white">{topRevenue?.label}</div>
+              <div className="text-xs text-emerald-200">{formatEuro(revYoY.current)} • VJ {formatEuro(revYoY.previousYear)}</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20">
+              <div className="text-[10px] font-bold uppercase text-orange-200 mb-1">Kostenfokus</div>
+              <div className="text-lg font-black text-white">{topCost?.label}</div>
+              <div className="text-xs text-orange-200">{formatEuro(costYoY.current)} • VJ {formatEuro(costYoY.previousYear)}</div>
+            </div>
+          </div>
+          <div className="bg-[#141824] border border-slate-800 rounded-2xl p-4">
+            <div className="flex justify-between items-center mb-2">
+              <div>
+                <div className="text-[10px] font-black uppercase text-slate-500">Was auffällt</div>
+                <div className="text-sm text-white font-bold">{topRevenue?.label} treibt {formatPercent(revYoY.deltaPct)}</div>
+              </div>
+              <div className={'px-3 py-1 rounded-full text-[10px] font-bold border ' + (revYoY.deltaAbs >= 0 ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-red-500/10 text-red-300 border-red-500/30')}>
+                {period === 'year' ? 'YTD' : 'Monat'}
+              </div>
+            </div>
+            <p className="text-xs text-slate-400">Netto {formatEuro(periodData.net)} • {revYoY.deltaAbs >= 0 ? 'Wachstum' : 'Rückgang'} in {topRevenue?.label}. Kostenblock {topCost?.label} liegt {costYoY.deltaAbs >= 0 ? 'über' : 'unter'} VJ.</p>
+          </div>
+          {drill && (
+            <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <div className="text-sm font-bold text-white">Drilldown: {drill.title}</div>
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Top 3 Treiber</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {(drill.items || []).slice(0,3).map((item, idx) => {
+                  const yoy = toYoY(item.total, item.ly, scale);
+                  return (
+                    <div key={idx} className="p-3 rounded-xl bg-[#141824] border border-slate-800">
+                      <div className="text-sm font-bold text-white">{item.name}</div>
+                      <div className="text-[11px] text-slate-400 mb-1">{formatEuro(yoy.current)} • VJ {formatEuro(yoy.previousYear)}</div>
+                      <div className={'text-[11px] font-bold inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ' + (yoy.deltaAbs >= 0 ? 'border-orange-500/30 bg-orange-500/10 text-orange-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200')}>
+                        {yoy.deltaAbs >= 0 ? <Icon name="ArrowUpRight" size={10} /> : <Icon name="ArrowDownRight" size={10} />} {formatPercent(yoy.deltaPct)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // === FOCUS OVERLAY ===
+    const FocusOverlay = ({ focusMode, onClose, onSelectFocus }) => {
+      const focusModes = [
+        { id: 'cost_down', title: 'Kosten senken', desc: 'Wareneinsatz, Personal, Betriebskosten optimieren', icon: 'TrendingDown' },
+        { id: 'revenue_up', title: 'Umsatz steigern', desc: 'Preise, Volumen und Mix für mehr Umsatz', icon: 'TrendingUp' },
+        { id: 'anomalies', title: 'Anomalien finden', desc: 'Ausreißer und ungewöhnliche Muster erkennen', icon: 'AlertTriangle' },
+        { id: 'mix_synergy', title: 'Mix & Synergien', desc: 'Produktmix, Kategorien und Kombinationen verbessern', icon: 'Shuffle' },
+        { id: 'tier_mode', title: 'Tier Mode / Experimente', desc: 'Aggressive Szenarien und mutige Tests', icon: 'Rocket' }
+      ];
+      return (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-in fade-in" onClick={onClose}>
+          <div className="bg-[#141824] border border-slate-700 rounded-3xl p-6 max-w-2xl w-full shadow-2xl animate-in zoom-in" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-black text-white flex items-center gap-2"><Icon name="Crosshair" className="text-indigo-400"/> Fokus wählen</h2>
+                <p className="text-sm text-slate-400 mt-1">Steuert, wie FinWing Signale priorisiert und Vorschläge macht.</p>
+              </div>
+              <button onClick={onClose} className="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center">
+                <Icon name="X" size={18} className="text-slate-400" />
+              </button>
+            </div>
+            <div className="space-y-3 mb-6">
+              {focusModes.map(mode => (
+                <button key={mode.id} onClick={() => onSelectFocus(mode.id)} className={focusMode === mode.id ? 'w-full text-left p-4 rounded-xl border-2 transition-all border-indigo-500 bg-indigo-500/10 hover:border-indigo-400' : 'w-full text-left p-4 rounded-xl border-2 transition-all border-slate-700 bg-slate-800/50 hover:border-slate-600'}>
+                  <div className="flex items-start gap-3">
+                    <div className={focusMode === mode.id ? 'w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-500/20' : 'w-12 h-12 rounded-xl flex items-center justify-center bg-slate-700/50'}>
+                      <Icon name={mode.icon} size={20} className="text-indigo-400" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-white">{mode.title}</h3>
+                        {focusMode === mode.id && <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">AKTIV</span>}
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">{mode.desc}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => onSelectFocus('none')} className={'flex-1 py-3 rounded-xl font-bold text-sm transition-all ' + (focusMode === 'none' ? 'bg-slate-700 text-white' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800')}>
+                Kein Fokus
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-500 text-center mt-4 italic">Du kannst den Fokus jederzeit ändern. Er beeinflusst Dashboard-Signale, Missionen und KI-Vorschläge.</p>
+          </div>
+        </div>
+      );
+    };
+
+    // === SIGNAL CENTER (FOCUS & SIGNALS STRIP) ===
+    const SignalCenter = ({ focusMode, periodData, period }) => {
+      const getFocusSignals = () => {
+        if (!focusMode || focusMode === 'none' || !periodData) return null;
+        const scale = period === 'year' ? 12 : 1;
+        const focusLabels = {
+          'cost_down': 'Kostenfokus',
+          'revenue_up': 'Umsatzfokus',
+          'anomalies': 'Anomalie-Scan',
+          'mix_synergy': 'Mix-Analyse',
+          'tier_mode': 'Tier Mode'
+        };
+        let signals = [];
+        
+        // Calculate deltaPct using toYoY helper
+        const costsWithYoY = (periodData.costs || []).map(c => ({ ...c, ...toYoY(c.current, c.lastYear) }));
+        const revenuesWithYoY = (periodData.revenues || []).map(r => ({ ...r, ...toYoY(r.current, r.lastYear) }));
+        
+        if (focusMode === 'cost_down') {
+          const worstCost = costsWithYoY.filter(c => c.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
+          if (worstCost) signals.push(`${worstCost.label} ${formatPercent(worstCost.deltaPct)} vs VJ`);
+          const cogsCost = costsWithYoY.find(c => c.id === 'cogs');
+          if (cogsCost && cogsCost.deltaPct > 5) signals.push(`Wareneinsatz über Zielband`);
+        } else if (focusMode === 'revenue_up') {
+          const bestRevenue = revenuesWithYoY.filter(r => r.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
+          if (bestRevenue) signals.push(`${bestRevenue.label} ${formatPercent(bestRevenue.deltaPct)} vs VJ`);
+        } else if (focusMode === 'anomalies') {
+          const anomaly = [...revenuesWithYoY, ...costsWithYoY].find(item => Math.abs(item.deltaPct) > 25);
+          if (anomaly) signals.push(`${anomaly.label}: ${anomaly.deltaPct > 0 ? 'Anstieg' : 'Rückgang'} ${formatPercent(Math.abs(anomaly.deltaPct))}`);
+        } else if (focusMode === 'mix_synergy') {
+          const topRev = revenuesWithYoY.sort((a, b) => b.deltaAbs - a.deltaAbs)[0];
+          const lowRev = revenuesWithYoY.sort((a, b) => a.deltaPct - b.deltaPct)[0];
+          if (topRev && lowRev) signals.push(`${topRev.label} treibt, ${lowRev.label} bleibt zurück`);
+        } else if (focusMode === 'tier_mode') {
+          signals.push('Szenarien mit +10 % Preis / +5 % Menge testen');
+        }
+        return { label: focusLabels[focusMode], signals: signals.slice(0, 2) };
+      };
+      const focusData = getFocusSignals();
+      if (!focusData) return null;
+      return (
+        <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-2xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Icon name="Crosshair" size={16} className="text-indigo-400" />
+              <span className="text-xs font-bold text-indigo-300 uppercase">{focusData.label}</span>
+            </div>
+            <div className="text-right">
+              {focusData.signals.map((signal, idx) => (
+                <div key={idx} className="text-xs text-white font-medium">{signal}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // === MISSION CARD ===
+    const MissionCard = ({ id, category, title, desc, impactPerMonth, status, pinned, onComplete, focusMode }) => {
+      const [isCompleting, setIsCompleting] = useState(false);
+      const statusChip = status === 'completed'
+        ? { label: 'Abgeschlossen', className: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' }
+        : status === 'active'
+          ? { label: 'Aktiv', className: 'bg-blue-500/10 text-blue-200 border border-blue-500/30' }
+          : { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
+      
+      const isFocusRelevant = () => {
+        if (focusMode === 'cost_down') return ['Einkauf', 'Personal', 'Betrieb'].includes(category);
+        if (focusMode === 'revenue_up') return ['Umsatz', 'Vertrieb', 'Marketing'].includes(category);
+        if (focusMode === 'mix_synergy') return ['Mix', 'Synergien', 'Vertrieb'].includes(category);
+        return false;
+      };
+      
+      const handleComplete = async () => {
+        setIsCompleting(true);
+        await new Promise(r => setTimeout(r, 600));
+        onComplete(id);
+      };
+      return (
+        <div className="group bg-[#141824] border border-slate-800 rounded-[1.5rem] p-5 hover:border-slate-700">
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{category}</span>
+              <span className={'text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase ' + statusChip.className}>{statusChip.label}</span>
+              {pinned && <Icon name="Star" size={14} className="text-yellow-400" fill="currentColor" />}
+              {focusMode !== 'none' && isFocusRelevant() && <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase bg-indigo-500/20 text-indigo-300">Im Fokus</span>}
+            </div>
+            <div className="text-right">
+              <div className="text-[9px] font-bold text-slate-500 uppercase mb-0.5">Potenzial / Monat</div>
+              <div className="text-lg font-black text-emerald-400">+{impactPerMonth} EUR</div>
+            </div>
+          </div>
+          <h4 className="font-bold text-white text-lg mb-2">{title}</h4>
+          <p className="text-xs text-slate-400 mb-5">{desc}</p>
+          {status === 'active' && (
+            <button onClick={handleComplete} disabled={isCompleting} className="w-full py-3 bg-white text-slate-950 rounded-xl text-xs font-bold hover:bg-slate-100 flex items-center justify-center gap-2">
+              {isCompleting ? '...' : '✓ Erledigt'}
+            </button>
+          )}
+        </div>
+      );
+    };
+
+    // === MAIN APP ===
+    function FinWingApp() {
+      const [view, setView] = useState("cockpit");
+      const [period, setPeriod] = useState('month');
+      const [drillCategory, setDrillCategory] = useState(null);
+      const [xp, setXp] = useState(() => loadFromStorage('finwing.xp', 1250));
+      const [flowViewMode, setFlowViewMode] = useState('bowtie');
+      const [showMissionsOverlay, setShowMissionsOverlay] = useState(false);
+      const [showSettingsOverlay, setShowSettingsOverlay] = useState(false);
+      const [showImportOverlay, setShowImportOverlay] = useState(false);
+      const [showFocusOverlay, setShowFocusOverlay] = useState(false);
+      const [journalDetail, setJournalDetail] = useState(null);
+      const [focusMode, setFocusMode] = useState(() => loadFromStorage('finwing.focusMode', 'none'));
+      const periodData = useMemo(() => computePeriodData(DATA_CONFIG, period), [period]);
+      const [missions, setMissions] = useState(() => loadFromStorage('finwing.missions', [
+        { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
+        { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
+        { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false }
+      ]));
+      const [data] = useState({
+        cashBalance: 45000,
+        revenue: 48500,
+        plannedRevenue: 52000,
+        costs: { cogs: 14500, personnel: 16800, rent: 8800, energy: 1800, other: 2500 },
+        upcomingPayments: [{ amount: 3250 }]
+      });
+
+      useEffect(() => { saveToStorage('finwing.xp', xp); }, [xp]);
+      useEffect(() => { saveToStorage('finwing.missions', missions); }, [missions]);
+      useEffect(() => { saveToStorage('finwing.focusMode', focusMode); }, [focusMode]);
+
+      const handleComplete = useCallback((id) => {
+        setMissions(prev => prev.map(m => m.id === id ? { ...m, status: 'completed' } : m));
+        setXp(p => p + 100);
+      }, []);
+      
+      const handleAcceptMission = useCallback((id) => {
+        setMissions(prev => prev.map(m => m.id === id ? { ...m, status: 'active' } : m));
+      }, []);
+
+      const handleTogglePinned = useCallback((id) => {
+        setMissions(prev => prev.map(m => m.id === id ? { ...m, pinned: !m.pinned } : m));
+      }, []);
+
+      const handleSetFocus = useCallback((mode) => {
+        setFocusMode(mode);
+        setShowFocusOverlay(false);
+      }, []);
+
+      return (
+        <div className="min-h-screen bg-[#050505] text-white pb-24">
+          <Header xp={xp} levelName="Cash Manager" streak={7} onOpenSettings={() => setShowSettingsOverlay(true)} onOpenImport={() => setShowImportOverlay(true)} onOpenReport={() => setView('journal')} onOpenFocus={() => setShowFocusOverlay(true)} isScanning={false} focusMode={focusMode} />
+          <main className={'mx-auto p-4 transition-all ' + (view === 'flow' ? 'max-w-4xl' : 'max-w-md')}>
+            {view === 'cockpit' && (
+              <div className="space-y-8 animate-in">
+                <StatusSection data={data} />
+                <RevenueWidget data={data} periodData={periodData} period={period} />
+                <SignalCenter focusMode={focusMode} periodData={periodData} period={period} />
+                <InsightCards periodData={periodData} period={period} onPeriodChange={setPeriod} focusMode={focusMode} />
+                <div>
+                  <div className="flex justify-between items-center mb-3 px-1">
+                    <h3 className="text-lg font-bold text-white">Deine Missionen</h3>
+                    <button onClick={() => setShowMissionsOverlay(true)} className="text-sm font-bold text-indigo-400 hover:text-indigo-300">Alle »</button>
+                  </div>
+                  <div className="space-y-3">
+                    {missions.filter(m => m.status === 'active').sort(m => m.pinned ? -1 : 1).slice(0, 2).map(m => (
+                      <MissionCard key={m.id} {...m} onComplete={handleComplete} focusMode={focusMode} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            {view === 'flow' && drillCategory && <DrillDownView categoryId={drillCategory} onClose={() => setDrillCategory(null)} data={DATA_CONFIG} period={period} />}
+            {view === 'flow' && !drillCategory && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-black text-white">Geldfluss</h2>
+                  <div className="inline-flex items-center rounded-full bg-[#0a0d14] border border-slate-800 p-1 shadow-lg">
+                    {[{ id: 'bowtie', label: 'Bow-Tie' }, { id: 'list', label: 'Liste' }].map((m) => (
+                      <button key={m.id} onClick={() => setFlowViewMode(m.id)} className={'px-4 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ' + (flowViewMode === m.id ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300')}>
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {flowViewMode === 'bowtie' 
+                  ? <BowTieFlow data={DATA_CONFIG} period={period} onPeriodChange={setPeriod} onDrillDown={setDrillCategory} onShowInsight={setDrillCategory} />
+                  : <MoneyFlowList data={DATA_CONFIG} period={period} onPeriodChange={setPeriod} onDrillDown={setDrillCategory} />
+                }
+              </div>
+            )}
+            {view === 'sandbox' && <SandboxView period={period} data={DATA_CONFIG} onLlmRequest={(prompt, params) => callLLMSimulator('Claude', prompt, params)} focusMode={focusMode} />}
+            {view === 'journal' && (
+              <div className="space-y-6 animate-in pb-24">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl font-black text-white">Logbuch</h2>
+                  {journalDetail && <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">Report</span>}
+                </div>
+                {journalDetail ? (
+                  <JournalDetail type={journalDetail} onBack={() => setJournalDetail(null)} />
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <button onClick={() => setJournalDetail('month')} className="bg-[#141824] border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition-all text-left cursor-pointer">
+                      <Icon name="BarChart3" size={32} className="text-indigo-400 mb-4" />
+                      <h3 className="font-bold text-white text-lg mb-2">Monatsbericht</h3>
+                      <p className="text-xs text-slate-400 mb-6">Detaillierte Analyse von Umsatz, Kosten und Gewinn diesen Monat</p>
+                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold">Ansehen <Icon name="ArrowRight" size={14} /></span>
+                    </button>
+                    <button onClick={() => setJournalDetail('year')} className="bg-[#141824] border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition-all text-left cursor-pointer">
+                      <Icon name="TrendingUp" size={32} className="text-emerald-400 mb-4" />
+                      <h3 className="font-bold text-white text-lg mb-2">Jahresvergleich</h3>
+                      <p className="text-xs text-slate-400 mb-6">YoY Trends und Leistungsmetriken für alle 12 Monate</p>
+                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">Ansehen <Icon name="ArrowRight" size={14} /></span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </main>
+          <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-sm bg-[#121212] border border-slate-800 rounded-full shadow-2xl z-40 p-1.5 flex justify-between">
+            <button onClick={() => setView("cockpit")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'cockpit' ? 'bg-white text-black' : 'text-slate-500')}>
+              <Icon name="Home" size={20} />
+            </button>
+            <button onClick={() => setView("flow")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'flow' ? 'bg-emerald-500 text-white' : 'text-slate-500')}>
+              <Icon name="ArrowRightLeft" size={20} />
+            </button>
+            <button onClick={() => setView("sandbox")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'sandbox' ? 'bg-indigo-500 text-white' : 'text-slate-500')}>
+              <Icon name="Sliders" size={20} />
+            </button>
+            <button onClick={() => setView("journal")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'journal' ? 'bg-orange-500 text-white' : 'text-slate-500')}>
+              <Icon name="BookOpen" size={20} />
+            </button>
+          </nav>
+
+          {showMissionsOverlay && (
+            <MissionsOverlay missions={missions} onClose={() => setShowMissionsOverlay(false)} onComplete={handleComplete} onTogglePinned={handleTogglePinned} onAccept={handleAcceptMission} focusMode={focusMode} />
+          )}
+
+          {showFocusOverlay && (
+            <FocusOverlay focusMode={focusMode} onClose={() => setShowFocusOverlay(false)} onSelectFocus={handleSetFocus} />
+          )}
+
+          {showSettingsOverlay && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-[#0a0d14] border border-slate-800 rounded-3xl p-8 max-w-sm w-full">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-black text-white">Einstellungen</h2>
+                  <button onClick={() => setShowSettingsOverlay(false)} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
+                    <Icon name="X" size={20} className="text-slate-500" />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-xl border border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <Icon name="Bell" size={18} className="text-indigo-400" />
+                      <span className="text-white font-semibold">Benachrichtigungen</span>
+                    </div>
+                    <input type="checkbox" defaultChecked className="w-5 h-5 accent-indigo-600" />
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-xl border border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <Icon name="Moon" size={18} className="text-indigo-400" />
+                      <span className="text-white font-semibold">Dark Mode</span>
+                    </div>
+                    <input type="checkbox" defaultChecked className="w-5 h-5 accent-indigo-600" />
+                  </div>
+                </div>
+                <button onClick={() => setShowSettingsOverlay(false)} className="w-full mt-6 py-3 bg-white text-slate-950 rounded-xl font-bold hover:bg-slate-100">
+                  Schliessen
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showImportOverlay && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-[#0a0d14] border border-slate-800 rounded-3xl p-8 max-w-sm w-full">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-black text-white">Daten importieren</h2>
+                  <button onClick={() => setShowImportOverlay(false)} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
+                    <Icon name="X" size={20} className="text-slate-500" />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:border-indigo-500 transition-all cursor-pointer">
+                    <Icon name="Upload" size={32} className="text-slate-500 mx-auto mb-2" />
+                    <p className="text-sm text-slate-400">CSV-Datei hier ablegen</p>
+                    <input type="file" accept=".csv" className="hidden" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Lightspeed API Key</label>
+                    <input type="password" placeholder="Paste API Key..." className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:border-indigo-500 outline-none" />
+                  </div>
+                </div>
+                <button onClick={() => setShowImportOverlay(false)} className="w-full mt-6 py-3 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600">
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Wait for Lucide to load - with visual debugging
+    const initApp = () => {
+      const rootEl = document.getElementById('root');
+      
+      if (window.lucide && window.lucide.icons) {
+        console.log('✅ Lucide loaded, mounting React...');
+        try {
+          const root = ReactDOM.createRoot(rootEl);
+          root.render(<FinWingApp />);
+        } catch (error) {
+          console.error('❌ React Render Error:', error);
+          rootEl.innerHTML = '<div style="color: red; padding: 20px; font-family: monospace;"><h1>RENDER ERROR</h1><pre>' + error.message + '\n\n' + error.stack + '</pre></div>';
+        }
+      } else {
+        console.log('⏳ Waiting for Lucide...');
+        rootEl.innerHTML = '<div style="color: yellow; padding: 20px;">Loading Lucide icons...</div>';
+        setTimeout(initApp, 100);
+      }
+    };
+    
+    setTimeout(initApp, 500);
+  </script>
+</body>
 </html>
