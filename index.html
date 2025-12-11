@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>FinWing - Dashboard</title>
+  <title>FinWing – Cash Manager</title>
+  <link rel="icon" type="image/png" href="./assets/finwing-logo.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
@@ -302,8 +303,15 @@
       return (
         <header className="sticky top-0 z-30 bg-[#050505]/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <img src="https://www.finwing.ai/assets/finwing_logo.png" alt="FinWing Logo" className="h-12 w-auto shrink-0" />
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="relative w-8 h-8 rounded-md bg-[#0a0d14] border border-white/5 p-1 shadow-[0_0_20px_rgba(99,102,241,0.25)]">
+                <img src="./assets/finwing-logo.png" alt="FinWing Logo" className="w-full h-full object-contain" />
+                {isScanning && <div className="absolute inset-0 rounded-md bg-indigo-500/20 animate-ping"></div>}
+              </div>
+              <div className="leading-tight truncate">
+                <div className="font-black text-white text-sm tracking-tight">FinWing</div>
+                <div className="text-[10px] font-bold text-indigo-400 uppercase hidden sm:block">Cash Manager</div>
+              </div>
             </div>
             <div className="flex gap-2">
               <button onClick={onOpenFocus} className={focusMode !== 'none' ? 'w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-700 relative bg-indigo-500/20' : 'w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-700 relative bg-slate-800/80'} title="Fokus wählen">
