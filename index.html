@@ -1537,7 +1537,7 @@
             {view === 'flow' && !drillCategory && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-black text-white">Geldfluss</h2>
+                  <h2 className="text-2xl font-black text-white">Money Flow</h2>
                   <div className="inline-flex items-center rounded-full bg-[#0a0d14] border border-slate-800 p-1 shadow-lg">
                     {[{ id: 'bowtie', label: 'Bow-Tie' }, { id: 'list', label: 'Liste' }].map((m) => (
                       <button key={m.id} onClick={() => setFlowViewMode(m.id)} className={'px-4 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ' + (flowViewMode === m.id ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300')}>
