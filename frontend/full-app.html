@@ -400,7 +400,7 @@
       // === FINDINGS MODAL ===
       const FindingsModal = ({ onClose, findings=[], onActivate }) => {
         const [filter, setFilter] = useState('all');
-        const filtered = filter==='all'?findings:findings.filter(f=>f.severity===filter);
+        const filtered = filter==='all'?findings:(Array.isArray(findings)?findings:[]).filter(f=>f.severity===filter);
         const sev = {high:{color:'text-red-400 bg-red-500/10 border-red-500/20',label:'Hoch'},medium:{color:'text-orange-400 bg-orange-500/10 border-orange-500/20',label:'Mittel'},low:{color:'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',label:'Niedrig'}};
         return (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col animate-in">
@@ -1513,7 +1513,7 @@
         const processedFindings = useMemo(()=>findings.map(f=>({...f,isActive:missions.some(m=>m.title===f.title&&m.status==='active')})),[findings,missions]);
         const makeLlmRequest = useCallback(async(prompt,params)=>callLLMSimulator(llmEngine,prompt,params),[llmEngine]);
 
-        useEffect(()=>{const runScan=async()=>{setIsScanning(true);try{const r=await callLLMSimulator(llmEngine,"AUTO_SCAN",{});if(r.newInsights)setInsights(r.newInsights);if(r.newMissions)setMissions(prev=>{const titles=prev.map(m=>m.title);const newOnes=r.newMissions.filter(m=>!titles.includes(m.title));return[...newOnes,...prev];});}catch(e){console.error(e);}finally{setIsScanning(false);}};runScan();},[]);
+        useEffect(()=>{const runScan=async()=>{setIsScanning(true);try{const r=await callLLMSimulator(llmEngine,"AUTO_SCAN",{});if(r.newInsights)setInsights(r.newInsights);if(r.newMissions)setMissions(prev=>{const titles=prev.map(m=>m.title);const newOnes=r.(Array.isArray(newMissions)?newMissions:[]).filter(m=>!titles.includes(m.title));return[...newOnes,...prev];});}catch(e){console.error(e);}finally{setIsScanning(false);}};runScan();},[]);
 
         return (
           <div className="min-h-screen bg-[#050505] text-white font-sans pb-24 relative overflow-hidden">
@@ -1528,8 +1528,8 @@
                     <div>
                       <div className="flex justify-between items-end mb-3 px-1"><h3 className="text-lg font-bold text-white">Deine Missionen</h3>{isScanning&&<span className="text-[10px] text-slate-500 flex items-center gap-1"><Icon name="Loader" size={10} className="animate-spin"/> Aktualisiere...</span>}</div>
                       <div className="space-y-3">
-                        {missions.filter(m=>m.status==='active').map(m=><MissionCard key={m.id} {...m} onComplete={handleComplete}/>)}
-                        {missions.filter(m=>m.status==='active').length===0&&<div className="p-8 text-center bg-slate-900/50 rounded-2xl border border-dashed border-slate-800"><Icon name="CheckCircle2" size={32} className="mx-auto text-emerald-500/50 mb-2"/><p className="text-slate-500">Alle erledigt!</p></div>}
+                        {(Array.isArray(missions)?missions:[]).filter(m=>m.status==='active').map(m=><MissionCard key={m.id} {...m} onComplete={handleComplete}/>)}
+                        {(Array.isArray(missions)?missions:[]).filter(m=>m.status==='active').length===0&&<div className="p-8 text-center bg-slate-900/50 rounded-2xl border border-dashed border-slate-800"><Icon name="CheckCircle2" size={32} className="mx-auto text-emerald-500/50 mb-2"/><p className="text-slate-500">Alle erledigt!</p></div>}
                       </div>
                     </div>
                   </div>

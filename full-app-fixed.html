@@ -379,8 +379,8 @@
 
       const costsWithYoY = (periodData.costs || []).map(c => ({ ...c, yoy: toYoY(c.current, c.lastYear) }));
       const revenuesWithYoY = (periodData.revenues || []).map(r => ({ ...r, yoy: toYoY(r.current, r.lastYear) }));
-      const topRisk = costsWithYoY.filter(c => c.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
-      const topChance = revenuesWithYoY.filter(r => r.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
+      const topRisk = (Array.isArray(costsWithYoY)?costsWithYoY:[]).filter(c => c.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
+      const topChance = (Array.isArray(revenuesWithYoY)?revenuesWithYoY:[]).filter(r => r.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
       const driver = topRisk ? { type: 'risk', label: topRisk.label, yoy: topRisk.yoy } : topChance ? { type: 'chance', label: topChance.label, yoy: topChance.yoy } : null;
 
       return (
@@ -438,8 +438,8 @@
     const InsightCards = ({ periodData, period, onPeriodChange, focusMode }) => {
       const revenuesYoY = (periodData.revenues || []).map(r => ({ ...r, yoy: toYoY(r.current, r.lastYear) }));
       const costsYoY = (periodData.costs || []).map(c => ({ ...c, yoy: toYoY(c.current, c.lastYear) }));
-      const topChance = revenuesYoY.filter(r => r.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
-      const topRisk = costsYoY.filter(c => c.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
+      const topChance = (Array.isArray(revenuesYoY)?revenuesYoY:[]).filter(r => r.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
+      const topRisk = (Array.isArray(costsYoY)?costsYoY:[]).filter(c => c.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
       const isRevenueEmphasis = focusMode === 'revenue_up';
       const isCostEmphasis = focusMode === 'cost_down';
 
@@ -854,11 +854,11 @@
         if (scope === 'articles') scopeKey = 'food'; // Show food items for custom article context
         // Strategic scopes don't show predefined articles, only custom
         if (['global', 'variable', 'personnel', 'operations', 'packaging'].includes(scope)) {
-          return customArticles.filter(ca => ca.scope === scope);
+          return (Array.isArray(customArticles)?customArticles:[]).filter(ca => ca.scope === scope);
         }
         const drillDown = DATA_CONFIG.drillDowns[scopeKey];
         const predefined = drillDown ? drillDown.items || [] : [];
-        const customInScope = customArticles.filter(ca => ca.scope === scope);
+        const customInScope = (Array.isArray(customArticles)?customArticles:[]).filter(ca => ca.scope === scope);
         return [...predefined, ...customInScope];
       }, [scope, customArticles]);
       
@@ -1356,12 +1356,12 @@
         const revenuesWithYoY = (periodData.revenues || []).map(r => ({ ...r, ...toYoY(r.current, r.lastYear) }));
         
         if (focusMode === 'cost_down') {
-          const worstCost = costsWithYoY.filter(c => c.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
+          const worstCost = (Array.isArray(costsWithYoY)?costsWithYoY:[]).filter(c => c.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
           if (worstCost) signals.push(`${worstCost.label} ${formatPercent(worstCost.deltaPct)} vs VJ`);
           const cogsCost = costsWithYoY.find(c => c.id === 'cogs');
           if (cogsCost && cogsCost.deltaPct > 5) signals.push(`Wareneinsatz über Zielband`);
         } else if (focusMode === 'revenue_up') {
-          const bestRevenue = revenuesWithYoY.filter(r => r.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
+          const bestRevenue = (Array.isArray(revenuesWithYoY)?revenuesWithYoY:[]).filter(r => r.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
           if (bestRevenue) signals.push(`${bestRevenue.label} ${formatPercent(bestRevenue.deltaPct)} vs VJ`);
         } else if (focusMode === 'anomalies') {
           const anomaly = [...revenuesWithYoY, ...costsWithYoY].find(item => Math.abs(item.deltaPct) > 25);
@@ -1508,7 +1508,7 @@
                     <button onClick={() => setShowMissionsOverlay(true)} className="text-sm font-bold text-indigo-400 hover:text-indigo-300">Alle »</button>
                   </div>
                   <div className="space-y-3">
-                    {missions.filter(m => m.status === 'active').sort(m => m.pinned ? -1 : 1).slice(0, 2).map(m => (
+                    {(Array.isArray(missions)?missions:[]).filter(m => m.status === 'active').sort(m => m.pinned ? -1 : 1).slice(0, 2).map(m => (
                       <MissionCard key={m.id} {...m} onComplete={handleComplete} focusMode={focusMode} />
                     ))}
                   </div>
