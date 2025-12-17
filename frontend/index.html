@@ -47,8 +47,25 @@
     const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
     // === LocalStorage ===
+    // Robust: localStorage-Lesen mit Fallback und Fehlerbehandlung
     const loadFromStorage = (key, defaultValue) => {
-      };
+      try {
+        const item = localStorage.getItem(key);
+        if (item === null || item === undefined) return defaultValue;
+        const parsed = JSON.parse(item);
+        // Wenn Missions: leeres Array -> Demo-Missionen
+        if (key === 'finwing.missions' && (!Array.isArray(parsed) || parsed.length === 0)) {
+          return [
+            { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
+            { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
+            { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false }
+          ];
+        }
+        return parsed;
+      } catch (e) {
+        return defaultValue;
+      }
+    };
 
     // === DATA CONFIG (canonical from FinWingApp.jsx) ===
     const DATA_CONFIG = {
@@ -1168,7 +1185,10 @@
       const filteredMissions = filterStatus === 'all' ? missions : (Array.isArray(missions)?missions:[]).filter(m => m.status === filterStatus);
       const sortedMissions = [...filteredMissions].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
       const totalActiveMissions = (Array.isArray(missions)?missions:[]).filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
-      
+
+      // Wenn keine Missionen vorhanden, freundliche Info anzeigen
+      const hasMissions = Array.isArray(sortedMissions) && sortedMissions.length > 0;
+
       return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-2xl max-h-[85vh] bg-[#0a0d14] border border-slate-800 rounded-3xl overflow-y-auto shadow-2xl">
@@ -1177,6 +1197,7 @@
                 <div>
                   <h2 className="text-2xl font-black text-white">Alle Missionen</h2>
                   <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Impact pro Monat</p>
+                  <p className="text-[10px] text-slate-400 mt-1">{window.location.hostname.includes('www') ? 'Du bist auf www – lokale Daten können leer sein.' : ''}</p>
                 </div>
                 <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
                   <Icon name="X" size={20} className="text-slate-500" />
@@ -1204,45 +1225,49 @@
               </div>
             </div>
             <div className="p-6 space-y-3">
-              {sortedMissions.map(m => {
-                const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
-                return (
-                  <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{m.category}</span>
-                        <span className={'text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase ' + statusChip.className}>{statusChip.label}</span>
+              {hasMissions ? (
+                sortedMissions.map(m => {
+                  const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
+                  return (
+                    <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{m.category}</span>
+                          <span className={'text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase ' + statusChip.className}>{statusChip.label}</span>
+                        </div>
+                        <button onClick={() => onTogglePinned(m.id)} className="p-1 hover:bg-slate-700 rounded transition-all">
+                          <Icon name="Star" size={16} className={m.pinned ? "text-yellow-400 fill-yellow-400" : "text-slate-600"} />
+                        </button>
                       </div>
-                      <button onClick={() => onTogglePinned(m.id)} className="p-1 hover:bg-slate-700 rounded transition-all">
-                        <Icon name="Star" size={16} className={m.pinned ? "text-yellow-400 fill-yellow-400" : "text-slate-600"} />
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-bold text-white text-base">{m.title}</h4>
-                      <div className="text-lg font-black text-emerald-400">+{m.impactPerMonth}</div>
-                    </div>
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-xs text-slate-400">{m.desc}</p>
-                      <div className="text-[10px] font-bold text-slate-500">EUR / Monat</div>
-                    </div>
-                    {m.status === 'open' && (
-                      <button onClick={() => onAccept(m.id)} className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                        Mission starten
-                      </button>
-                    )}
-                    {m.status === 'active' && (
-                      <button onClick={() => onComplete(m.id)} className="w-full py-2 bg-white/90 text-slate-950 rounded-xl text-xs font-semibold hover:bg-white flex items-center justify-center gap-2">
-                        ✓ Erledigt
-                      </button>
-                    )}
-                    {m.status === 'completed' && (
-                      <div className="w-full py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                        ✓ Abgeschlossen
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-bold text-white text-base">{m.title}</h4>
+                        <div className="text-lg font-black text-emerald-400">+{m.impactPerMonth}</div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs text-slate-400">{m.desc}</p>
+                        <div className="text-[10px] font-bold text-slate-500">EUR / Monat</div>
+                      </div>
+                      {m.status === 'open' && (
+                        <button onClick={() => onAccept(m.id)} className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                          Mission starten
+                        </button>
+                      )}
+                      {m.status === 'active' && (
+                        <button onClick={() => onComplete(m.id)} className="w-full py-2 bg-white/90 text-slate-950 rounded-xl text-xs font-semibold hover:bg-white flex items-center justify-center gap-2">
+                          ✓ Erledigt
+                        </button>
+                      )}
+                      {m.status === 'completed' && (
+                        <div className="w-full py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                          ✓ Abgeschlossen
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center text-slate-400 text-xs py-8">Keine Missionen vorhanden.</div>
+              )}
             </div>
           </div>
         </div>
