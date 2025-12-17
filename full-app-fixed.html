@@ -48,25 +48,7 @@
 
     // === LocalStorage ===
     const loadFromStorage = (key, defaultValue) => {
-      try {
-        const saved = localStorage.getItem(key);
-        return saved ? JSON.parse(saved) : defaultValue;
-      } catch (e) {
-        console.error('Storage error:', e);
-        return defaultValue;
-      }
-    };
-                  <div className="flex justify-between items-center mb-3 px-1">
-                    <div>
-                      <h3 className="text-lg font-bold text-white">Deine Missionen</h3>
-                      <div className="text-[11px] text-slate-500">priorisiert nach Impact</div>
-                    </div>
-                    <button onClick={() => setShowMissionsOverlay(true)} className="text-sm font-bold text-indigo-400 hover:text-indigo-300">Alle »</button>
-                  </div>
-      } catch (e) {
-        console.error('Storage error:', e);
-      }
-    };
+      };
 
     // === DATA CONFIG (canonical from FinWingApp.jsx) ===
     const DATA_CONFIG = {
