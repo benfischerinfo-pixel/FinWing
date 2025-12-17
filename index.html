@@ -56,10 +56,13 @@
         return defaultValue;
       }
     };
-
-    const saveToStorage = (key, value) => {
-      try {
-        localStorage.setItem(key, JSON.stringify(value));
+                  <div className="flex justify-between items-center mb-3 px-1">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">Deine Missionen</h3>
+                      <div className="text-[11px] text-slate-500">priorisiert nach Impact</div>
+                    </div>
+                    <button onClick={() => setShowMissionsOverlay(true)} className="text-sm font-bold text-indigo-400 hover:text-indigo-300">Alle »</button>
+                  </div>
       } catch (e) {
         console.error('Storage error:', e);
       }
@@ -399,49 +402,43 @@
       const driver = topRisk ? { type: 'risk', label: topRisk.label, yoy: topRisk.yoy } : topChance ? { type: 'chance', label: topChance.label, yoy: topChance.yoy } : null;
 
       return (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex justify-between items-start px-1">
             <div>
               <h3 className="text-lg font-bold text-white leading-tight">Business Health</h3>
-              <p className="text-[11px] text-slate-500">Radar Monat</p>
+              <p className="text-xs text-slate-500">Radar Monat</p>
             </div>
-            <div className="text-[10px] font-bold text-slate-600 uppercase">Netto & Risiko</div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-[#141824] rounded-[2rem] border border-slate-800 p-6">
-              <div className="text-[10px] font-black tracking-[0.08em] text-slate-500 uppercase mb-3">Netto-Cashflow</div>
-              <div className="flex items-baseline gap-2 mb-3">
-                <span className="text-4xl font-black text-white leading-none">{formatEuro(netYoY.current)}</span>
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Netto-Cashflow Card */}
+            <div className="flex-1 bg-[#141824] rounded-2xl border border-slate-800 p-5 hover:border-slate-700 transition-all">
+              <div className="text-xs font-black tracking-widest text-slate-500 uppercase mb-3">Netto-Cashflow</div>
+              <div className="space-y-2 mb-3">
+                <div className="text-3xl font-black text-white leading-none">{formatEuro(netYoY.current)}</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-xs text-slate-400">VJ: {formatEuro(netYoY.previousYear)}</div>
-                <div className={'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-bold ' + (netPositive ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400' : 'border-red-500/25 bg-red-500/10 text-red-400')}>
-                  {netPositive ? <Icon name="ArrowUpRight" size={12} /> : <Icon name="ArrowDownRight" size={12} />} {formatPercent(netYoY.deltaPct)} vs VJ
+              <div className="space-y-1.5">
+                <div className="text-xs text-slate-400">VJ: <span className="text-slate-300 font-medium">{formatEuro(netYoY.previousYear)}</span></div>
+                <div className={'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ' + (netPositive ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-red-500/30 bg-red-500/10 text-red-400')}>
+                  {netPositive ? <Icon name="ArrowUpRight" size={13} /> : <Icon name="ArrowDownRight" size={13} />} {formatPercent(netYoY.deltaPct)}
                 </div>
               </div>
             </div>
 
-            <div className="bg-[#141824] rounded-[2rem] border border-slate-800 p-6">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="text-[10px] font-black tracking-[0.08em] text-slate-500 uppercase">Top-Risiko / Top-Chance</div>
-                  <div className="text-[11px] text-slate-500">Kategorie • VJ</div>
-                </div>
-              </div>
+            {/* Top-Risiko / Top-Chance Card */}
+            <div className="flex-1 bg-[#141824] rounded-2xl border border-slate-800 p-5 hover:border-slate-700 transition-all">
+              <div className="text-xs font-black tracking-widest text-slate-500 uppercase mb-3">Top-Risiko / Chance</div>
               {driver ? (
                 <div className="space-y-2">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-black text-white leading-none">{formatEuro(driver.yoy.current)}</span>
+                  <div className="text-2xl font-black text-white leading-none">{formatEuro(driver.yoy.current)}</div>
+                  <div className="text-xs text-slate-400"><span className="text-slate-300 font-medium">{driver.label}</span> • VJ: {formatEuro(driver.yoy.previousYear)}</div>
+                  <div className={'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ' + (driver.type === 'risk' ? 'border-orange-500/30 bg-orange-500/10 text-orange-400' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400')}>
+                    {driver.yoy.deltaAbs >= 0 ? <Icon name="ArrowUpRight" size={13} /> : <Icon name="ArrowDownRight" size={13} />} {formatPercent(driver.yoy.deltaPct)}
                   </div>
-                  <div className="text-xs text-slate-400">{driver.label} • VJ: {formatEuro(driver.yoy.previousYear)}</div>
-                  <div className={'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-bold ' + (driver.type === 'risk' ? 'border-orange-500/25 bg-orange-500/10 text-orange-400' : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400')}>
-                    {driver.yoy.deltaAbs >= 0 ? <Icon name="ArrowUpRight" size={12} /> : <Icon name="ArrowDownRight" size={12} />} {formatPercent(driver.yoy.deltaPct)} vs VJ
-                  </div>
-                  <div className="text-[11px] text-slate-600">Runway bleibt oben priorisiert</div>
+                  <div className="text-xs text-slate-600 italic">Runway im Fokus</div>
                 </div>
               ) : (
-                <div className="text-sm text-slate-400 mt-2">Alles im grünen Bereich</div>
+                <div className="text-sm text-slate-400">Alles im grünen Bereich</div>
               )}
             </div>
           </div>
@@ -697,6 +694,10 @@
           <svg viewBox={'0 0 '+width+' '+height} className="w-full h-full max-w-2xl" style={{pointerEvents:'auto'}}>
             <defs><linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#3b82f6"/><stop offset="100%" stopColor="#6366f1"/></linearGradient></defs>
             <circle cx={centerX} cy={centerY} r={centerR+12} fill="none" stroke="rgba(99,102,241,0.1)" strokeWidth="2"/><circle cx={centerX} cy={centerY} r={centerR+6} fill="none" stroke="rgba(99,102,241,0.2)" strokeWidth="1"/><circle cx={centerX} cy={centerY} r={centerR} fill="#0f172a" stroke="url(#cg)" strokeWidth="4"/>
+            <g>
+              <rect x={centerX-35} y={centerY-40} width="70" height="28" rx="8" fill="#0f172a" opacity="0.8"/>
+              <text x={centerX} y={centerY-18} textAnchor="middle" fill="white" fontSize="13" fontWeight="bold">NETTO</text>
+            </g>
             <text x={centerX} y={centerY+12} textAnchor="middle" fill="#94a3b8" fontSize="12" fontWeight="600">{formatEuro(net)}</text>
             <g id="netto-vj-text">
               <text x={centerX} y={centerY+27} textAnchor="middle" fontSize="11" fontWeight="600" fill="#ffcccc">VJ: {formatEuro(netLy)}</text>
@@ -1176,49 +1177,164 @@
 
     // === MISSIONS OVERLAY ===
     const MissionsOverlay = ({ missions, onClose, onComplete, onTogglePinned, onAccept }) => {
+      const [filterStatus, setFilterStatus] = useState('all');
+      const statusChipLookup = {
+        'completed': { label: 'Abgeschlossen', className: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' },
+        'active': { label: 'Aktiv', className: 'bg-blue-500/10 text-blue-200 border border-blue-500/30' },
+        'open': { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' }
+      };
+      const filteredMissions = filterStatus === 'all' ? missions : missions.filter(m => m.status === filterStatus);
+      const sortedMissions = [...filteredMissions].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
+      const totalActiveMissions = missions.filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
+      
+      return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl max-h-[85vh] bg-[#0a0d14] border border-slate-800 rounded-3xl overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-[#0a0d14] border-b border-slate-800 px-6 py-4 space-y-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-black text-white">Alle Missionen</h2>
+                  <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Impact pro Monat</p>
+                </div>
+                <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
+                  <Icon name="X" size={20} className="text-slate-500" />
+                </button>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-slate-800/50">
+                <div className="text-xs">
+                  <span className="text-slate-500">Aktive Missionen:</span>
+                  <span className="text-lg font-black text-emerald-400 ml-2">+{totalActiveMissions} EUR / Monat</span>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                {['all', 'open', 'active', 'completed'].map((status) => {
+                  const labels = { all: 'Alle', open: 'Offen', active: 'Aktiv', completed: 'Erledigt' };
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => setFilterStatus(status)}
+                      className={'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ' + (filterStatus === status ? 'bg-indigo-600 text-white' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700')}
+                    >
+                      {labels[status]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="p-6 space-y-3">
+              {sortedMissions.map(m => {
+                const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
+                return (
+                  <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{m.category}</span>
+                        <span className={'text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase ' + statusChip.className}>{statusChip.label}</span>
+                      </div>
+                      <button onClick={() => onTogglePinned(m.id)} className="p-1 hover:bg-slate-700 rounded transition-all">
+                        <Icon name="Star" size={16} className={m.pinned ? "text-yellow-400 fill-yellow-400" : "text-slate-600"} />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-bold text-white text-base">{m.title}</h4>
+                      <div className="text-lg font-black text-emerald-400">+{m.impactPerMonth}</div>
+                    </div>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs text-slate-400">{m.desc}</p>
+                      <div className="text-[10px] font-bold text-slate-500">EUR / Monat</div>
+                    </div>
+                    {m.status === 'open' && (
+                      <button onClick={() => onAccept(m.id)} className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                        Mission starten
+                      </button>
+                    )}
+                    {m.status === 'active' && (
+                      <button onClick={() => onComplete(m.id)} className="w-full py-2 bg-white/90 text-slate-950 rounded-xl text-xs font-semibold hover:bg-white flex items-center justify-center gap-2">
+                        ✓ Erledigt
+                      </button>
+                    )}
+                    {m.status === 'completed' && (
+                      <div className="w-full py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                        ✓ Abgeschlossen
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // === ADVISOR OVERLAY ===
+    const AdvisorOverlay = ({ open, onClose }) => {
+      if (!open) return null;
       return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-2xl max-h-[85vh] bg-[#0a0d14] border border-slate-800 rounded-3xl overflow-y-auto shadow-2xl">
             <div className="sticky top-0 bg-[#0a0d14] border-b border-slate-800 px-6 py-4 flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-black text-white">Alle Missionen</h2>
-                <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Potenziale pro Monat</p>
+                <h2 className="text-2xl font-black text-white">Steuerberater-Ansicht</h2>
+                <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Exporte & Unterlagen für deine Kanzlei</p>
               </div>
               <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
                 <Icon name="X" size={20} className="text-slate-500" />
               </button>
             </div>
-            <div className="p-6 space-y-3">
-              {missions.map(m => (
-                <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/50' : 'border-slate-800')}>
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{m.category}</span>
-                    <button onClick={() => onTogglePinned(m.id)} className="p-1 hover:bg-slate-700 rounded transition-all">
-                      <Icon name="Star" size={16} className={m.pinned ? "text-yellow-400 fill-yellow-400" : "text-slate-600"} />
-                    </button>
+            <div className="p-6 space-y-6">
+              <div>
+                <p className="text-xs text-slate-400 mb-3">Bündele hier Daten für deine Kanzlei: Exporte, CSV-Dateien und Monatsreports. Dies ist eine Demo – Uploads/Exporte sind noch nicht aktiv verbunden.</p>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2"><Icon name="Database" size={14} /> Datenquellen</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="bg-[#141824] border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition-all">
+                    <div className="text-sm font-bold text-white mb-1">Kasse / POS</div>
+                    <p className="text-xs text-slate-400">CSV/Export aus deinem Kassensystem</p>
                   </div>
-                  <h4 className="font-bold text-white text-lg mb-1">{m.title}</h4>
-                  <p className="text-xs text-slate-400 mb-3">{m.desc}</p>
-                  <div className="text-sm font-bold text-emerald-400 mb-4">
-                    +{m.impactPerMonth} EUR / Monat
+                  <div className="bg-[#141824] border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition-all">
+                    <div className="text-sm font-bold text-white mb-1">Bank</div>
+                    <p className="text-xs text-slate-400">MT940/CSV Kontoauszüge</p>
                   </div>
-                  {m.status === 'open' && (
-                    <button onClick={() => onAccept(m.id)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                      Mission starten
-                    </button>
-                  )}
-                  {m.status === 'active' && (
-                    <button onClick={() => onComplete(m.id)} className="w-full py-3 bg-white text-slate-950 rounded-xl text-xs font-bold hover:bg-slate-100 flex items-center justify-center gap-2">
-                      ✓ Erledigt
-                    </button>
-                  )}
-                  {m.status === 'completed' && (
-                    <div className="w-full py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                      ✓ Abgeschlossen
-                    </div>
-                  )}
+                  <div className="bg-[#141824] border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition-all">
+                    <div className="text-sm font-bold text-white mb-1">Buchhaltung</div>
+                    <p className="text-xs text-slate-400">DATEV-Exporte, BWA, Summen/Salden</p>
+                  </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2"><Icon name="Upload" size={14} /> Uploads & Exporte</h3>
+                <div className="space-y-2">
+                  <button className="w-full py-2.5 bg-indigo-600/80 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold transition-all" title="Datei hochladen (CSV/PDF)">
+                    + Datei hochladen (CSV/PDF)
+                  </button>
+                  <button className="w-full py-2.5 bg-emerald-600/80 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all" title="Monatsreport exportieren (PDF)">
+                    ↓ Monatsreport exportieren (PDF)
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500 italic">Dies ist eine Demo – Uploads/Exporte sind hier noch nicht aktiv verbunden.</p>
+              </div>
+
+              <div className="space-y-3 border-t border-slate-800 pt-4">
+                <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2"><Icon name="Share2" size={14} /> Kanzlei-Freigabe</h3>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value="https://app.finwing.ai/advisor/demo-mandant" 
+                      readOnly 
+                      className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 font-mono"
+                    />
+                    <button className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold transition-all" title="Link kopieren">
+                      Kopieren
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-500">In der echten App kann deine Kanzlei hier direkt auf die Auswertungen zugreifen.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1397,16 +1513,24 @@
       if (!focusData) return null;
       return (
         <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-2xl p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Icon name="Crosshair" size={16} className="text-indigo-400" />
-              <span className="text-xs font-bold text-indigo-300 uppercase">{focusData.label}</span>
+              <span className="text-xs font-bold text-indigo-300 uppercase">Fokus & Signale</span>
             </div>
-            <div className="text-right">
-              {focusData.signals.map((signal, idx) => (
-                <div key={idx} className="text-xs text-white font-medium">{signal}</div>
-              ))}
-            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300">{focusData.label}</span>
+          </div>
+          <div className="space-y-2">
+            {focusData.signals.length > 0 ? (
+              focusData.signals.map((signal, idx) => (
+                <div key={idx} className="text-xs text-white font-medium flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1 shrink-0"></div>
+                  {signal}
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-slate-400">Keine aktuellen Signale</p>
+            )}
           </div>
         </div>
       );
@@ -1471,6 +1595,7 @@
       const [showSettingsOverlay, setShowSettingsOverlay] = useState(false);
       const [showImportOverlay, setShowImportOverlay] = useState(false);
       const [showFocusOverlay, setShowFocusOverlay] = useState(false);
+      const [showAdvisorOverlay, setShowAdvisorOverlay] = useState(false);
       const [journalDetail, setJournalDetail] = useState(null);
       const [focusMode, setFocusMode] = useState(() => loadFromStorage('finwing.focusMode', 'none'));
       const periodData = useMemo(() => computePeriodData(DATA_CONFIG, period), [period]);
@@ -1522,10 +1647,7 @@
                 <InsightCards periodData={periodData} period={period} onPeriodChange={setPeriod} focusMode={focusMode} />
                 <div>
                   <div className="flex justify-between items-center mb-3 px-1">
-                    <div>
-                      <h3 className="text-lg font-bold text-white">Deine Missionen</h3>
-                      <div className="text-[11px] text-slate-500">priorisiert nach Impact</div>
-                    </div>
+                    <h3 className="text-lg font-bold text-white">Deine Missionen</h3>
                     <button onClick={() => setShowMissionsOverlay(true)} className="text-sm font-bold text-indigo-400 hover:text-indigo-300">Alle »</button>
                   </div>
                   <div className="space-y-3">
@@ -1578,6 +1700,12 @@
                       <p className="text-xs text-slate-400 mb-6">YoY Trends und Leistungsmetriken für alle 12 Monate</p>
                       <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">Ansehen <Icon name="ArrowRight" size={14} /></span>
                     </button>
+                    <button onClick={() => setShowAdvisorOverlay(true)} className="bg-[#141824] border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition-all text-left cursor-pointer md:col-span-2">
+                      <Icon name="FileCheck" size={32} className="text-purple-400 mb-4" />
+                      <h3 className="font-bold text-white text-lg mb-2">Steuerberater</h3>
+                      <p className="text-xs text-slate-400 mb-6">Unterlagen & Auswertungen für deine Kanzlei</p>
+                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold">Öffnen <Icon name="ArrowRight" size={14} /></span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -1604,6 +1732,10 @@
 
           {showFocusOverlay && (
             <FocusOverlay focusMode={focusMode} onClose={() => setShowFocusOverlay(false)} onSelectFocus={handleSetFocus} />
+          )}
+
+          {showAdvisorOverlay && (
+            <AdvisorOverlay open={showAdvisorOverlay} onClose={() => setShowAdvisorOverlay(false)} />
           )}
 
           {showSettingsOverlay && (

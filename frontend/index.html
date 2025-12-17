@@ -56,10 +56,13 @@
         return defaultValue;
       }
     };
-
-    const saveToStorage = (key, value) => {
-      try {
-        localStorage.setItem(key, JSON.stringify(value));
+                  <div className="flex justify-between items-center mb-3 px-1">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">Deine Missionen</h3>
+                      <div className="text-[11px] text-slate-500">priorisiert nach Impact</div>
+                    </div>
+                    <button onClick={() => setShowMissionsOverlay(true)} className="text-sm font-bold text-indigo-400 hover:text-indigo-300">Alle »</button>
+                  </div>
       } catch (e) {
         console.error('Storage error:', e);
       }
@@ -1644,10 +1647,7 @@
                 <InsightCards periodData={periodData} period={period} onPeriodChange={setPeriod} focusMode={focusMode} />
                 <div>
                   <div className="flex justify-between items-center mb-3 px-1">
-                    <div>
-                      <h3 className="text-lg font-bold text-white">Deine Missionen</h3>
-                      <div className="text-[11px] text-slate-500">priorisiert nach Impact</div>
-                    </div>
+                    <h3 className="text-lg font-bold text-white">Deine Missionen</h3>
                     <button onClick={() => setShowMissionsOverlay(true)} className="text-sm font-bold text-indigo-400 hover:text-indigo-300">Alle »</button>
                   </div>
                   <div className="space-y-3">
