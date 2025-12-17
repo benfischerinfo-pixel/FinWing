@@ -1651,7 +1651,8 @@
     const initApp = () => {
       const rootEl = document.getElementById('root');
       
-      if (window.lucide && window.lucide.icons) {
+      if (!rootEl) { console.warn('Missing #root'); return; }
+if (window.lucide && window.lucide.icons) {
         console.log('✅ Lucide loaded, mounting React...');
         try {
           const root = ReactDOM.createRoot(rootEl);
