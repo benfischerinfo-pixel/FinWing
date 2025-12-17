@@ -50,6 +50,15 @@
     const loadFromStorage = (key, defaultValue) => {
       };
 
+      // Fix: saveToStorage für Production-Fehler
+      const saveToStorage = (key, value) => {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+        } catch (e) {
+          // Fehler ignorieren, damit App nicht crasht
+        }
+      };
+
     // === DATA CONFIG (canonical from FinWingApp.jsx) ===
     const DATA_CONFIG = {
       revenues: [
