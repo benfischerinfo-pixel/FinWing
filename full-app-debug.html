@@ -13,7 +13,7 @@
 <body class="bg-black">
   <div id="root"></div>
   
-  <script type="text/babel">
+  <script type="text/babel" data-presets="env,react,typescript">
     console.log("=== FINWING DEBUG START ===");
     console.log("React:", typeof React);
     console.log("ReactDOM:", typeof ReactDOM);
@@ -109,5 +109,6 @@
       `;
     }
   </script>
+<script>window.Babel && Babel.transformScriptTags();</script>
 </body>
 </html>

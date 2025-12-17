@@ -13,7 +13,7 @@
 <body class="bg-[#050505]">
   <div id="root"></div>
 
-  <script type="text/babel">
+  <script type="text/babel" data-presets="env,react,typescript">
     const { useState } = React;
 
     const Icon = ({ name, size = 24, className = "", strokeWidth = 2, fill = "none" }) => {
@@ -152,5 +152,6 @@
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
+<script>window.Babel && Babel.transformScriptTags();</script>
 </body>
 </html>

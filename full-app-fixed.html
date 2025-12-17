@@ -43,7 +43,7 @@
 <body class="bg-[#050505]">
   <div id="root"></div>
 
-  <script type="text/babel">
+  <script type="text/babel" data-presets="env,react,typescript">
     const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
     // === LocalStorage ===
@@ -1687,5 +1687,6 @@
     
     setTimeout(initApp, 500);
   </script>
+<script>window.Babel && Babel.transformScriptTags();</script>
 </body>
 </html>

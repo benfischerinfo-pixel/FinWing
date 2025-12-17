@@ -16,7 +16,7 @@
   <body class="bg-slate-950 text-slate-50">
     <div id="root"></div>
 
-    <script type="text/babel">
+    <script type="text/babel" data-presets="env,react,typescript">
       const { useState, useEffect, useRef, useMemo } = React;
 
       const Icon = ({ name, size = 20, className = "", strokeWidth = 2 }) => {
@@ -249,5 +249,6 @@
 
       ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
-  </body>
+  <script>window.Babel && Babel.transformScriptTags();</script>
+</body>
 </html>

@@ -18,7 +18,7 @@
     </div>
   </div>
   
-  <script type="text/babel">
+  <script type="text/babel" data-presets="env,react,typescript">
     console.log("=== MINIMAL TEST START ===");
     const { useState, useEffect, useCallback, useMemo, useRef } = React;
     console.log("React hooks loaded:", !!useState);
@@ -75,5 +75,6 @@
       document.getElementById('root').innerHTML = `<div style="color:red;padding:20px;"><h1>ERROR:</h1><pre>${e.toString()}</pre></div>`;
     }
   </script>
+<script>window.Babel && Babel.transformScriptTags();</script>
 </body>
 </html>

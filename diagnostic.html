@@ -10,7 +10,7 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
-  <script type="text/babel">
+  <script type="text/babel" data-presets="env,react,typescript">
     console.log("Babel script started");
     console.log("React:", typeof React);
     console.log("ReactDOM:", typeof ReactDOM);
@@ -28,5 +28,6 @@
       console.error("Render failed:", e);
     }
   </script>
+<script>window.Babel && Babel.transformScriptTags();</script>
 </body>
 </html>
