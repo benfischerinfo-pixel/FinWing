@@ -1606,11 +1606,29 @@
       const [journalDetail, setJournalDetail] = useState(null);
       const [focusMode, setFocusMode] = useState(() => loadFromStorage('finwing.focusMode', 'none'));
       const periodData = useMemo(() => computePeriodData(DATA_CONFIG, period), [period]);
-      const [missions, setMissions] = useState(() => loadFromStorage('finwing.missions', [
+      // Robust demo mission seeding: 6 realistic demo missions
+      const demoMissions = [
         { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
         { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
-        { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false }
-      ]));
+        { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false },
+        { id: 4, title: "Personal schulen", category: "Personal", impactPerMonth: 150, desc: "Service-Training für Upselling", status: 'open', pinned: false },
+        { id: 5, title: "Energie sparen", category: "Betrieb", impactPerMonth: 90, desc: "LEDs & Zeitschaltuhren installieren", status: 'open', pinned: false },
+        { id: 6, title: "Social Media Push", category: "Marketing", impactPerMonth: 210, desc: "Instagram-Kampagne für Mittagsmenü", status: 'open', pinned: false }
+      ];
+
+      // Robust load: if corrupted/empty, seed demo missions, never overwrite user data
+      const loadMissions = () => {
+        try {
+          const stored = window.localStorage.getItem('finwing.missions');
+          if (!stored) return demoMissions;
+          const parsed = JSON.parse(stored);
+          if (!Array.isArray(parsed) || parsed.length === 0) return demoMissions;
+          return parsed;
+        } catch (e) {
+          return demoMissions;
+        }
+      };
+      const [missions, setMissions] = useState(loadMissions);
       const [data] = useState({
         cashBalance: 45000,
         revenue: 48500,
@@ -1720,89 +1738,101 @@
           </main>
           <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-sm bg-[#121212] border border-slate-800 rounded-full shadow-2xl z-40 p-1.5 flex justify-between">
             <button onClick={() => setView("cockpit")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'cockpit' ? 'bg-white text-black' : 'text-slate-500')}>
-              <Icon name="Home" size={20} />
-            </button>
-            <button onClick={() => setView("flow")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'flow' ? 'bg-emerald-500 text-white' : 'text-slate-500')}>
-              <Icon name="ArrowRightLeft" size={20} />
-            </button>
-            <button onClick={() => setView("sandbox")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'sandbox' ? 'bg-indigo-500 text-white' : 'text-slate-500')}>
-              <Icon name="Sliders" size={20} />
-            </button>
-            <button onClick={() => setView("journal")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'journal' ? 'bg-orange-500 text-white' : 'text-slate-500')}>
-              <Icon name="BookOpen" size={20} />
-            </button>
-          </nav>
-
-          {showMissionsOverlay && (
-            <MissionsOverlay missions={missions} onClose={() => setShowMissionsOverlay(false)} onComplete={handleComplete} onTogglePinned={handleTogglePinned} onAccept={handleAcceptMission} focusMode={focusMode} />
-          )}
-
-          {showFocusOverlay && (
-            <FocusOverlay focusMode={focusMode} onClose={() => setShowFocusOverlay(false)} onSelectFocus={handleSetFocus} />
-          )}
-
-          {showAdvisorOverlay && (
-            <AdvisorOverlay open={showAdvisorOverlay} onClose={() => setShowAdvisorOverlay(false)} />
-          )}
-
-          {showSettingsOverlay && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-[#0a0d14] border border-slate-800 rounded-3xl p-8 max-w-sm w-full">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-black text-white">Einstellungen</h2>
-                  <button onClick={() => setShowSettingsOverlay(false)} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
-                    <Icon name="X" size={20} className="text-slate-500" />
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-xl border border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <Icon name="Bell" size={18} className="text-indigo-400" />
-                      <span className="text-white font-semibold">Benachrichtigungen</span>
+              // Demo laden button: only show if no missions
+              const handleSeedDemo = () => {
+                setMissions(demoMissions);
+                window.localStorage.setItem('finwing.missions', JSON.stringify(demoMissions));
+              };
+              return (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                  <div className="w-full max-w-2xl max-h-[85vh] bg-[#0a0d14] border border-slate-800 rounded-3xl overflow-y-auto shadow-2xl">
+                    <div className="sticky top-0 bg-[#0a0d14] border-b border-slate-800 px-6 py-4 space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h2 className="text-2xl font-black text-white">Alle Missionen</h2>
+                          <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Impact pro Monat</p>
+                          <p className="text-[10px] text-slate-400 mt-1">{window.location.hostname.includes('www') ? 'Du bist auf www – lokale Daten können leer sein.' : ''}</p>
+                        </div>
+                        <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
+                          <Icon name="X" size={20} className="text-slate-500" />
+                        </button>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-800/50">
+                        <div className="text-xs">
+                          <span className="text-slate-500">Aktive Missionen:</span>
+                          <span className="text-lg font-black text-emerald-400 ml-2">+{totalActiveMissions} EUR / Monat</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        {['all', 'open', 'active', 'completed'].map((status) => {
+                          const labels = { all: 'Alle', open: 'Offen', active: 'Aktiv', completed: 'Erledigt' };
+                          return (
+                            <button
+                              key={status}
+                              onClick={() => setFilterStatus(status)}
+                              className={'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ' + (filterStatus === status ? 'bg-indigo-600 text-white' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700')}
+                            >
+                              {labels[status]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {!hasMissions && (
+                        <div className="flex justify-center mt-4">
+                          <button onClick={handleSeedDemo} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-2">
+                            <Icon name=\"RefreshCw\" size={14} className=\"text-white\" /> Demo laden
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <input type="checkbox" defaultChecked className="w-5 h-5 accent-indigo-600" />
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-xl border border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <Icon name="Moon" size={18} className="text-indigo-400" />
-                      <span className="text-white font-semibold">Dark Mode</span>
+                    <div className="p-6 space-y-3">
+                      {hasMissions ? (
+                        sortedMissions.map(m => {
+                          const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
+                          return (
+                            <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
+                              <div className="flex justify-between items-start mb-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{m.category}</span>
+                                  <span className={'text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase ' + statusChip.className}>{statusChip.label}</span>
+                                </div>
+                                <button onClick={() => onTogglePinned(m.id)} className="p-1 hover:bg-slate-700 rounded transition-all">
+                                  <Icon name="Star" size={16} className={m.pinned ? "text-yellow-400 fill-yellow-400" : "text-slate-600"} />
+                                </button>
+                              </div>
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-bold text-white text-base">{m.title}</h4>
+                                <div className="text-lg font-black text-emerald-400">+{m.impactPerMonth}</div>
+                              </div>
+                              <div className="flex items-center justify-between mb-3">
+                                <p className="text-xs text-slate-400">{m.desc}</p>
+                                <div className="text-[10px] font-bold text-slate-500">EUR / Monat</div>
+                              </div>
+                              {m.status === 'open' && (
+                                <button onClick={() => onAccept(m.id)} className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                                  Mission starten
+                                </button>
+                              )}
+                              {m.status === 'active' && (
+                                <button onClick={() => onComplete(m.id)} className="w-full py-2 bg-white/90 text-slate-950 rounded-xl text-xs font-semibold hover:bg-white flex items-center justify-center gap-2">
+                                  ✓ Erledigt
+                                </button>
+                              )}
+                              {m.status === 'completed' && (
+                                <div className="w-full py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                                  ✓ Abgeschlossen
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="text-center text-slate-400 text-xs py-8">Keine Missionen vorhanden. <br/> <span className='block mt-2'>Du kannst mit <b>Demo laden</b> Beispiel-Missionen einfügen.</span></div>
+                      )}
                     </div>
-                    <input type="checkbox" defaultChecked className="w-5 h-5 accent-indigo-600" />
                   </div>
                 </div>
-                <button onClick={() => setShowSettingsOverlay(false)} className="w-full mt-6 py-3 bg-white text-slate-950 rounded-xl font-bold hover:bg-slate-100">
-                  Schliessen
-                </button>
-              </div>
-            </div>
-          )}
-
-          {showImportOverlay && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-[#0a0d14] border border-slate-800 rounded-3xl p-8 max-w-sm w-full">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-black text-white">Daten importieren</h2>
-                  <button onClick={() => setShowImportOverlay(false)} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
-                    <Icon name="X" size={20} className="text-slate-500" />
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:border-indigo-500 transition-all cursor-pointer">
-                    <Icon name="Upload" size={32} className="text-slate-500 mx-auto mb-2" />
-                    <p className="text-sm text-slate-400">CSV-Datei hier ablegen</p>
-                    <input type="file" accept=".csv" className="hidden" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Lightspeed API Key</label>
-                    <input type="password" placeholder="Paste API Key..." className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:border-indigo-500 outline-none" />
-                  </div>
-                </div>
-                <button onClick={() => setShowImportOverlay(false)} className="w-full mt-6 py-3 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600">
-                  Abbrechen
-                </button>
-              </div>
-            </div>
-          )}
+              );
         </div>
       );
     }
