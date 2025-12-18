@@ -1192,9 +1192,8 @@
         { id: 8, title: "Kundenfeedback sammeln", category: "Vertrieb", impactPerMonth: 60, desc: "Feedback-Box am Tresen", status: 'open', pinned: false }
       ];
 
-      // --- 3. Always use safe arrays ---
+      // --- 3. Always use safe arrays for every step ---
       const missionsSafe = safe(missions);
-      // Fallback: if truly empty, show demo missions (never overwrite real data)
       const missionsDisplay = missionsSafe.length === 0 ? demoMissions : missionsSafe;
 
       const [filterStatus, setFilterStatus] = useState('all');
@@ -1203,14 +1202,21 @@
         'active': { label: 'Aktiv', className: 'bg-blue-500/10 text-blue-200 border border-blue-500/30' },
         'open': { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' }
       };
+      // Safe filtered missions
       const filteredMissions = filterStatus === 'all'
         ? missionsDisplay
         : safe(missionsDisplay).filter(m => m.status === filterStatus);
-      const sortedMissions = [...safe(filteredMissions)].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
+      const filteredSafe = safe(filteredMissions);
+      // Safe sorted missions
+      const sortedMissions = [...filteredSafe].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
+      const sortedSafe = safe(sortedMissions);
+      // Safe total active
       const totalActiveMissions = safe(missionsDisplay).filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
 
-      // Wenn keine Missionen vorhanden, freundliche Info anzeigen
-      const hasMissions = safe(sortedMissions).length > 0;
+      // Final notfall-guard: if any array is not valid, show empty fallback
+      const arraysValid = [missionsSafe, missionsDisplay, filteredSafe, sortedSafe].every(Array.isArray);
+      const hasMissions = arraysValid && sortedSafe.length > 0;
+      // ...existing code...
 
       return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1249,7 +1255,7 @@
             </div>
             <div className="p-6 space-y-3">
               {hasMissions ? (
-                sortedMissions.map(m => {
+                sortedSafe.map(m => {
                   const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
                   return (
                     <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
