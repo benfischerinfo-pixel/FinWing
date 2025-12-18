@@ -1175,19 +1175,42 @@
     };
 
     // === MISSIONS OVERLAY ===
+
     const MissionsOverlay = ({ missions, onClose, onComplete, onTogglePinned, onAccept }) => {
+      // --- 1. Safe array utility ---
+      const safe = (x) => Array.isArray(x) ? x : [];
+
+      // --- 2. Demo missions fallback ---
+      const demoMissions = [
+        { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
+        { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
+        { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false },
+        { id: 4, title: "Personal schulen", category: "Personal", impactPerMonth: 150, desc: "Service-Training für Upselling", status: 'open', pinned: false },
+        { id: 5, title: "Energie sparen", category: "Betrieb", impactPerMonth: 90, desc: "LEDs & Zeitschaltuhren installieren", status: 'open', pinned: false },
+        { id: 6, title: "Social Media Push", category: "Marketing", impactPerMonth: 210, desc: "Instagram-Kampagne für Mittagsmenü", status: 'open', pinned: false },
+        { id: 7, title: "Karten-Optimierung", category: "Mix", impactPerMonth: 120, desc: "Unrentable Gerichte streichen", status: 'open', pinned: false },
+        { id: 8, title: "Kundenfeedback sammeln", category: "Vertrieb", impactPerMonth: 60, desc: "Feedback-Box am Tresen", status: 'open', pinned: false }
+      ];
+
+      // --- 3. Always use safe arrays ---
+      const missionsSafe = safe(missions);
+      // Fallback: if truly empty, show demo missions (never overwrite real data)
+      const missionsDisplay = missionsSafe.length === 0 ? demoMissions : missionsSafe;
+
       const [filterStatus, setFilterStatus] = useState('all');
       const statusChipLookup = {
         'completed': { label: 'Abgeschlossen', className: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' },
         'active': { label: 'Aktiv', className: 'bg-blue-500/10 text-blue-200 border border-blue-500/30' },
         'open': { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' }
       };
-      const filteredMissions = filterStatus === 'all' ? missions : (Array.isArray(missions)?missions:[]).filter(m => m.status === filterStatus);
-      const sortedMissions = [...filteredMissions].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
-      const totalActiveMissions = (Array.isArray(missions)?missions:[]).filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
+      const filteredMissions = filterStatus === 'all'
+        ? missionsDisplay
+        : safe(missionsDisplay).filter(m => m.status === filterStatus);
+      const sortedMissions = [...safe(filteredMissions)].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
+      const totalActiveMissions = safe(missionsDisplay).filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
 
       // Wenn keine Missionen vorhanden, freundliche Info anzeigen
-      const hasMissions = Array.isArray(sortedMissions) && sortedMissions.length > 0;
+      const hasMissions = safe(sortedMissions).length > 0;
 
       return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
