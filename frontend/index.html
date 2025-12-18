@@ -1699,11 +1699,32 @@
                     <h3 className="text-lg font-bold text-white">Deine Missionen</h3>
                     <button onClick={() => setShowMissionsOverlay(true)} className="text-sm font-bold text-indigo-400 hover:text-indigo-300">Alle »</button>
                   </div>
-                  <div className="space-y-3">
-                    {(Array.isArray(missions)?missions:[]).filter(m => m.status === 'active').sort(m => m.pinned ? -1 : 1).slice(0, 2).map(m => (
-                      <MissionCard key={m.id} {...m} onComplete={handleComplete} focusMode={focusMode} />
-                    ))}
-                  </div>
+                  {(() => {
+                    const safe = v => Array.isArray(v) ? v : [];
+                    const demoMissions = [
+                      { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
+                      { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
+                      { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false },
+                      { id: 4, title: "Personal schulen", category: "Personal", impactPerMonth: 150, desc: "Service-Training für Upselling", status: 'open', pinned: false },
+                      { id: 5, title: "Energie sparen", category: "Betrieb", impactPerMonth: 90, desc: "LEDs & Zeitschaltuhren installieren", status: 'open', pinned: false },
+                      { id: 6, title: "Social Media Push", category: "Marketing", impactPerMonth: 210, desc: "Instagram-Kampagne für Mittagsmenü", status: 'open', pinned: false }
+                    ];
+                    const list = safe(missions).length > 0 ? safe(missions) : (safe(filteredMissions).length > 0 ? safe(filteredMissions) : demoMissions);
+                    // Sort: active > open > completed, then impact
+                    const preview = safe(list)
+                      .filter(m => m.status === 'active' || m.status === 'open')
+                      .sort((a, b) => {
+                        const statusOrder = { active: 0, open: 1, completed: 2 };
+                        if ((statusOrder[a.status] ?? 9) !== (statusOrder[b.status] ?? 9)) return (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
+                        return (b.impactPerMonth || 0) - (a.impactPerMonth || 0);
+                      })
+                      .slice(0, 3);
+                    if (preview.length > 0) {
+                      return <div className="space-y-3">{preview.map(m => <MissionCard key={m.id} {...m} onComplete={handleComplete} focusMode={focusMode} />)}</div>;
+                    }
+                    // Wenn wirklich gar nichts da ist: Demo-Button
+                    return <button className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold mt-2" onClick={() => { setMissions(demoMissions); window.localStorage.setItem('finwing.missions', JSON.stringify(demoMissions)); }}>Demo-Missionen laden</button>;
+                  })()}
                 </div>
               </div>
             )}
