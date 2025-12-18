@@ -1176,11 +1176,10 @@
 
     // === MISSIONS OVERLAY ===
 
-    const MissionsOverlay = ({ missions, onClose, onComplete, onTogglePinned, onAccept }) => {
-      // --- 1. Safe array utility ---
-      const safe = (x) => Array.isArray(x) ? x : [];
-
-      // --- 2. Demo missions fallback ---
+    function MissionsOverlay(props) {
+      props = props || {};
+      const safe = (v) => Array.isArray(v) ? v : [];
+      // Demo missions fallback
       const demoMissions = [
         { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
         { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
@@ -1191,31 +1190,28 @@
         { id: 7, title: "Karten-Optimierung", category: "Mix", impactPerMonth: 120, desc: "Unrentable Gerichte streichen", status: 'open', pinned: false },
         { id: 8, title: "Kundenfeedback sammeln", category: "Vertrieb", impactPerMonth: 60, desc: "Feedback-Box am Tresen", status: 'open', pinned: false }
       ];
-
-      // --- 3. Always use safe arrays for every step ---
-      const missionsSafe = safe(missions);
+      // Safe all arrays
+      const missionsSafe = safe(props.missions);
+      const filteredSafe = safe(props.filteredMissions);
+      const sortedSafe = safe(props.sortedMissions);
+      // Fallback for main list
       const missionsDisplay = missionsSafe.length === 0 ? demoMissions : missionsSafe;
-
       const [filterStatus, setFilterStatus] = useState('all');
       const statusChipLookup = {
         'completed': { label: 'Abgeschlossen', className: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' },
         'active': { label: 'Aktiv', className: 'bg-blue-500/10 text-blue-200 border border-blue-500/30' },
         'open': { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' }
       };
-      // Safe filtered missions
+      // Always use safe for filtered/sorted
       const filteredMissions = filterStatus === 'all'
         ? missionsDisplay
         : safe(missionsDisplay).filter(m => m.status === filterStatus);
-      const filteredSafe = safe(filteredMissions);
-      // Safe sorted missions
-      const sortedMissions = [...filteredSafe].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
-      const sortedSafe = safe(sortedMissions);
-      // Safe total active
+      const filteredReallySafe = safe(filteredMissions);
+      const sortedMissions = [...filteredReallySafe].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
+      const sortedReallySafe = safe(sortedMissions);
       const totalActiveMissions = safe(missionsDisplay).filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
-
-      // Final notfall-guard: if any array is not valid, show empty fallback
-      const arraysValid = [missionsSafe, missionsDisplay, filteredSafe, sortedSafe].every(Array.isArray);
-      const hasMissions = arraysValid && sortedSafe.length > 0;
+      const arraysValid = [missionsSafe, missionsDisplay, filteredReallySafe, sortedReallySafe].every(Array.isArray);
+      const hasMissions = arraysValid && sortedReallySafe.length > 0;
       // ...existing code...
 
       return (
@@ -1816,7 +1812,7 @@
                     </div>
                     <div className="p-6 space-y-3">
                       {hasMissions ? (
-                        sortedSafe.map(m => {
+                        sortedReallySafe.map(m => {
                           const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
                           return (
                             <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
