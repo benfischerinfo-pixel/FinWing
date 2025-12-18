@@ -137,125 +137,124 @@
           ],
           insight: {
             type: "info",
-            title: "Gute Ergänzung – nicht Übertreiben",
-            text: "Unit Economics okay, aber keine Abhängigkeit von Plattformen aufbauen."
-          }
-        },
-        cogs: {
-          title: "Detail: Wareneinsatz",
-          side: "out",
-          isCost: true,
-          items: [
-            { name: "Frischeware", unit: "Anteil Umsatz", amount: 0.34, total: 7800, ly: 7200, trend: 0.08 },
-            { name: "Trockenware", unit: "Anteil Umsatz", amount: 0.12, total: 3200, ly: 3000, trend: 0.07 },
-            { name: "Getränke-EK", unit: "Anteil Umsatz", amount: 0.09, total: 2500, ly: 2200, trend: 0.14 }
-          ],
-          insight: {
-            type: "warning",
-            title: "Frischeanteil leicht zu hoch",
-            text: "Food-Cost 2–3 %-Punkte über Benchmark. Menüengineering lohnt sich."
-          }
-        },
-        pers: {
-          title: "Detail: Personal",
-          side: "out",
-          isCost: true,
-          items: [
-            { name: "Service", unit: "Stunden / Woche", amount: 180, total: 7200, ly: 6900, trend: 0.04 },
-            { name: "Küche", unit: "Stunden / Woche", amount: 210, total: 8400, ly: 8100, trend: 0.04 }
-          ],
-          insight: {
-            type: "warning",
-            title: "Dienstag & Mittwoch sind zu dicht besetzt",
-            text: "Personalkosten steigen schneller als Umsatz. Teste 1 Schicht weniger an schwachen Tagen."
-          }
-        },
-        fix: {
-          title: "Detail: Fixkosten",
-          side: "out",
-          isCost: true,
-          items: [
-            { name: "Miete", unit: "Monat", amount: 1, total: 4200, ly: 4100, trend: 0.02 },
-            { name: "Energie", unit: "Monat", amount: 1, total: 1650, ly: 2100, trend: -0.21 },
-            { name: "Versicherungen & Gebühren", unit: "Monat", amount: 1, total: 950, ly: 900, trend: 0.06 }
-          ],
-          insight: {
-            type: "info",
-            title: "Energie-Effizienz zahlt sich aus",
-            text: "Stromkosten -21 % durch neue Geräte. Weiter so!"
-          }
-        },
-        other: {
-          title: "Detail: Sonstiges",
-          side: "out",
-          isCost: true,
-          items: [
-            { name: "Marketing & Werbung", unit: "Monat", amount: 1, total: 850, ly: 600, trend: 0.42 },
-            { name: "Software & Tools", unit: "Monat", amount: 1, total: 420, ly: 380, trend: 0.11 },
-            { name: "Diverses", unit: "Monat", amount: 1, total: 280, ly: 300, trend: -0.07 }
-          ],
-          insight: {
-            type: "info",
-            title: "Marketing wird hochgefahren",
-            text: "Werbebudget +42 % für Social-Media-Kampagnen. ROI tracken!"
-          }
-        },
-        profit: {
-          title: "Gewinnanalyse",
-          isProfit: true,
-          items: [
-            { name: "Marge Speisen", unit: "x", amount: 1, total: 7500, ly: 6800, trend: 0.10 },
-            { name: "Marge Getränke", unit: "x", amount: 1, total: 11100, ly: 9500, trend: 0.17 }
-          ],
-          insight: {
-            type: "success",
-            title: "Gesamtbild",
-            text: "Gewinn stabil durch Getränke-Marge."
-          }
-        }
-      }
-    };
 
-    const formatEuro = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
-    const formatPercent = (val) => (val > 0 ? '+' : '') + val.toFixed(1) + '%';
+            // Crash-proof MissionsOverlay: keine Destructuring-Parameter, safe() für alle Arrays, try/catch-Fallback
+            function MissionsOverlay(props) {
+              props = props || {};
+              const safe = (v) => Array.isArray(v) ? v : [];
+              // Demo missions fallback
+              const demoMissions = [
+                { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
+                { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
+                { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false },
+                { id: 4, title: "Personal schulen", category: "Personal", impactPerMonth: 150, desc: "Service-Training für Upselling", status: 'open', pinned: false },
+                { id: 5, title: "Energie sparen", category: "Betrieb", impactPerMonth: 90, desc: "LEDs & Zeitschaltuhren installieren", status: 'open', pinned: false },
+                { id: 6, title: "Social Media Push", category: "Marketing", impactPerMonth: 210, desc: "Instagram-Kampagne für Mittagsmenü", status: 'open', pinned: false },
+                { id: 7, title: "Karten-Optimierung", category: "Mix", impactPerMonth: 120, desc: "Unrentable Gerichte streichen", status: 'open', pinned: false },
+                { id: 8, title: "Kundenfeedback sammeln", category: "Vertrieb", impactPerMonth: 60, desc: "Feedback-Box am Tresen", status: 'open', pinned: false }
+              ];
+              // Safe all arrays
+              const missionsSafe = safe(props.missions);
+              const missionsDisplay = missionsSafe.length === 0 ? demoMissions : missionsSafe;
+              const [filterStatus, setFilterStatus] = useState('all');
+              const statusChipLookup = {
+                'completed': { label: 'Abgeschlossen', className: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' },
+                'active': { label: 'Aktiv', className: 'bg-blue-500/10 text-blue-200 border border-blue-500/30' },
+                'open': { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' }
+              };
+              // Always use safe for filtered/sorted
+              const filteredMissions = filterStatus === 'all'
+                ? missionsDisplay
+                : safe(missionsDisplay).filter(m => m.status === filterStatus);
+              const filteredReallySafe = safe(filteredMissions);
+              const sortedMissions = [...filteredReallySafe].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
+              const sortedReallySafe = safe(sortedMissions);
+              const totalActiveMissions = safe(missionsDisplay).filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
+              const arraysValid = [missionsSafe, missionsDisplay, filteredReallySafe, sortedReallySafe].every(Array.isArray);
+              const hasMissions = arraysValid && sortedReallySafe.length > 0;
+              // ...existing code...
 
-    // === Helper: compute YoY tuple for any item ===
-    const toYoY = (total, ly, scale = 1) => {
-      const current = (total || 0) * scale;
-      const previousYear = (ly || 0) * scale;
-      const deltaAbs = current - previousYear;
-      const deltaPct = previousYear !== 0 ? (deltaAbs / Math.abs(previousYear)) * 100 : 0;
-      return { current, previousYear, deltaAbs, deltaPct };
-    };
-
-    const computePeriodData = (config, period = 'month') => {
-      const scale = period === 'year' ? 12 : 1;
-      const revenues = config.revenues.map((r) => {
-        const current = r.value * scale;
-        const lastYear = current / (1 + (r.trendYoY || 0));
-        return { ...r, current, lastYear };
-      });
-      const costs = config.costs.map((c) => {
-        const current = c.value * scale;
-        const lastYear = current / (1 + (c.trendYoY || 0));
-        return { ...c, current, lastYear };
-      });
-      const totalRev = revenues.reduce((a, b) => a + b.current, 0);
-      const totalCost = costs.reduce((a, b) => a + b.current, 0);
-      const totalRevLy = revenues.reduce((a, b) => a + b.lastYear, 0);
-      const totalCostLy = costs.reduce((a, b) => a + b.lastYear, 0);
-      const net = totalRev - totalCost;
-      const netLy = totalRevLy - totalCostLy;
-      const netTrend = netLy !== 0 ? (net - netLy) / Math.abs(netLy) : 0;
-      return { revenues, costs, totalRev, totalCost, totalRevLy, totalCostLy, net, netLy, netTrend };
-    };
-
-    // === LLM Simulator (from FinWingApp.jsx) ===
-    const callLLMSimulator = async (engine, prompt, params) => {
-      const delay = engine === 'Claude' ? 2200 : engine === 'OpenAI' ? 1800 : 1500;
-      await new Promise(r => setTimeout(r, delay));
-      const prefix = engine === 'Claude' ? '[Claude] ' : engine === 'OpenAI' ? '[GPT-4] ' : '[Gemini] ';
-      if (prompt === "AUTO_SCAN") return { newMissions: [], newInsights: [] };
+              try {
+                return (
+                  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="w-full max-w-2xl max-h-[85vh] bg-[#0a0d14] border border-slate-800 rounded-3xl overflow-y-auto shadow-2xl">
+                      <div className="sticky top-0 bg-[#0a0d14] border-b border-slate-800 px-6 py-4 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h2 className="text-2xl font-black text-white">Alle Missionen</h2>
+                            <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Impact pro Monat</p>
+                            <p className="text-[10px] text-slate-400 mt-1">{window.location.hostname.includes('www') ? 'Du bist auf www – lokale Daten können leer sein.' : ''}</p>
+                          </div>
+                          <button onClick={props.onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
+                            <Icon name="X" size={20} className="text-slate-500" />
+                          </button>
+                        </div>
+                        <div className="flex justify-between items-center pt-2 border-t border-slate-800/50">
+                          <div className="text-xs">
+                            <span className="text-slate-500">Aktive Missionen:</span>
+                            <span className="text-lg font-black text-emerald-400 ml-2">+{totalActiveMissions} EUR / Monat</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          {['all', 'open', 'active', 'completed'].map((status) => {
+                            const labels = { all: 'Alle', open: 'Offen', active: 'Aktiv', completed: 'Erledigt' };
+                            return (
+                              <button
+                                key={status}
+                                onClick={() => setFilterStatus(status)}
+                                className={'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ' + (filterStatus === status ? 'bg-indigo-600 text-white' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700')}
+                              >
+                                {labels[status]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="p-6 space-y-3">
+                        {hasMissions ? (
+                          sortedReallySafe.map(m => {
+                            const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
+                            return (
+                              <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{m.category}</span>
+                                  <span className={'text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase ' + statusChip.className}>{statusChip.label}</span>
+                                </div>
+                                <h4 className="font-bold text-white text-base">{m.title}</h4>
+                                <div className="text-lg font-black text-emerald-400 mb-2">+{m.impactPerMonth}</div>
+                                <p className="text-xs text-slate-400 mb-3">{m.desc}</p>
+                                {m.status === 'open' && (
+                                  <button onClick={() => props.onAccept && props.onAccept(m.id)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                                    Mission starten
+                                  </button>
+                                )}
+                                {m.status === 'active' && (
+                                  <button onClick={() => props.onComplete && props.onComplete(m.id)} className="w-full py-3 bg-white text-slate-950 rounded-xl text-xs font-bold hover:bg-slate-100 flex items-center justify-center gap-2">
+                                    ✓ Erledigt
+                                  </button>
+                                )}
+                                {m.status === 'completed' && (
+                                  <div className="w-full py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                                    ✓ Abgeschlossen
+                                  </div>
+                                )}
+                                <button onClick={() => props.onTogglePinned && props.onTogglePinned(m.id)} className="p-1 hover:bg-slate-700 rounded transition-all mt-2">
+                                  <Icon name="Star" size={16} className={m.pinned ? "text-yellow-400 fill-yellow-400" : "text-slate-600"} />
+                                </button>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="text-slate-400 text-xs">Keine Missionen gefunden.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              } catch (e) {
+                return <div className="text-red-500 p-8">Fehler in MissionsOverlay: {String(e)}</div>;
+              }
+            }
       if (prompt.includes("hebel")) return { aiResponse: prefix + "Groesster Hebel: Personal." };
       const delta = (params?.price||0) + (params?.volume||0) - (params?.cost||0);
       return { aiResponse: prefix + (delta > 10 ? "Signifikanter Hebel: +" + delta + "%" : delta < -10 ? "Vorsicht: Verlust!" : "Neutral. Staerkere Hebel vorhanden.") };
