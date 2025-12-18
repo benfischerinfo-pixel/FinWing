@@ -1274,14 +1274,14 @@
                       </div>
                       <div className="flex items-center justify-between mb-3">
                         <p className="text-xs text-slate-400">{m.desc}</p>
-                        <div className="text-[10px] font-bold text-slate-500">EUR / Monat</div>
-                      </div>
-                      {m.status === 'open' && (
-                        <button onClick={() => onAccept(m.id)} className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                          Mission starten
-                        </button>
-                      )}
-                      {m.status === 'active' && (
+                        { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
+                        { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
+                        { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false },
+                        { id: 4, title: "Personal schulen", category: "Personal", impactPerMonth: 150, desc: "Service-Training für Upselling", status: 'open', pinned: false },
+                        { id: 5, title: "Energie sparen", category: "Betrieb", impactPerMonth: 90, desc: "LEDs & Zeitschaltuhren installieren", status: 'open', pinned: false },
+                        { id: 6, title: "Social Media Push", category: "Marketing", impactPerMonth: 210, desc: "Instagram-Kampagne für Mittagsmenü", status: 'open', pinned: false },
+                        { id: 7, title: "Karten-Optimierung", category: "Mix", impactPerMonth: 120, desc: "Unrentable Gerichte streichen", status: 'open', pinned: false },
+                        { id: 8, title: "Kundenfeedback sammeln", category: "Vertrieb", impactPerMonth: 60, desc: "Feedback-Box am Tresen", status: 'open', pinned: false }
                         <button onClick={() => onComplete(m.id)} className="w-full py-2 bg-white/90 text-slate-950 rounded-xl text-xs font-semibold hover:bg-white flex items-center justify-center gap-2">
                           ✓ Erledigt
                         </button>
