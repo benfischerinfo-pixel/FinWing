@@ -173,6 +173,7 @@
             // Crash-proof MissionsOverlay: keine Destructuring-Parameter, safe() für alle Arrays, try/catch-Fallback
             function MissionsOverlay(props) {
               props = props || {};
+              // Robust safe array helper
               const safe = (v) => Array.isArray(v) ? v : [];
               // Demo missions fallback
               const demoMissions = [
@@ -204,8 +205,6 @@
               const totalActiveMissions = safe(missionsDisplay).filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
               const arraysValid = [missionsSafe, missionsDisplay, filteredReallySafe, sortedReallySafe].every(Array.isArray);
               const hasMissions = arraysValid && sortedReallySafe.length > 0;
-              // ...existing code...
-
               try {
                 return (
                   <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -244,7 +243,7 @@
                       </div>
                       <div className="p-6 space-y-3">
                         {hasMissions ? (
-                          sortedReallySafe.map(m => {
+                          safe(sortedReallySafe).map(m => {
                             const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
                             return (
                               <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
