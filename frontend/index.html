@@ -1699,11 +1699,14 @@
                     <h3 className="text-lg font-bold text-white">Deine Missionen</h3>
                     <button onClick={() => setShowMissionsOverlay(true)} className="text-sm font-bold text-indigo-400 hover:text-indigo-300">Alle »</button>
                   </div>
-                  <div className="space-y-3">
-                    {(Array.isArray(missions)?missions:[]).filter(m => m.status === 'active').sort(m => m.pinned ? -1 : 1).slice(0, 2).map(m => (
-                      <MissionCard key={m.id} {...m} onComplete={handleComplete} focusMode={focusMode} />
-                    ))}
-                  </div>
+                  {(() => {
+                    const list = Array.isArray(missions) ? missions : [];
+                    const preview = list.slice(0, 3);
+                    if (preview.length > 0) {
+                      return <div className="space-y-3">{preview.map(m => <MissionCard key={m.id} {...m} onComplete={handleComplete} focusMode={focusMode} />)}</div>;
+                    }
+                    return <div className="text-xs text-slate-400 mt-2">Noch keine Missionen – <button className="underline text-indigo-400" onClick={() => setShowMissionsOverlay(true)}>Alle</button></div>;
+                  })()}
                 </div>
               </div>
             )}
