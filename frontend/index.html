@@ -44,7 +44,11 @@
   <div id="root"></div>
 
   <script type="text/babel" data-presets="env,react,typescript">
+
     const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+    // Crash-proof: always map/filter/flatMap on arrays
+    const asArray = (v) => Array.isArray(v) ? v : [];
 
 
     // === Robust Missions Storage Helpers ===
@@ -168,124 +172,7 @@
             { name: "Spätabend (21–23h)", unit: "Bestellungen", amount: 60, total: 1000, ly: 900, trend: 0.11 }
           ],
           insight: {
-            type: "info",
-
-            // Crash-proof MissionsOverlay: keine Destructuring-Parameter, safe() für alle Arrays, try/catch-Fallback
-            function MissionsOverlay(props) {
-              props = props || {};
-              // Robust safe array helper
-              const safe = (v) => Array.isArray(v) ? v : [];
-              // Demo missions fallback
-              const demoMissions = [
-                { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
-                { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
-                { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false },
-                { id: 4, title: "Personal schulen", category: "Personal", impactPerMonth: 150, desc: "Service-Training für Upselling", status: 'open', pinned: false },
-                { id: 5, title: "Energie sparen", category: "Betrieb", impactPerMonth: 90, desc: "LEDs & Zeitschaltuhren installieren", status: 'open', pinned: false },
-                { id: 6, title: "Social Media Push", category: "Marketing", impactPerMonth: 210, desc: "Instagram-Kampagne für Mittagsmenü", status: 'open', pinned: false },
-                { id: 7, title: "Karten-Optimierung", category: "Mix", impactPerMonth: 120, desc: "Unrentable Gerichte streichen", status: 'open', pinned: false },
-                { id: 8, title: "Kundenfeedback sammeln", category: "Vertrieb", impactPerMonth: 60, desc: "Feedback-Box am Tresen", status: 'open', pinned: false }
-              ];
-              // Safe all arrays
-              const missionsSafe = safe(props.missions);
-              const missionsDisplay = missionsSafe.length === 0 ? demoMissions : missionsSafe;
-              const [filterStatus, setFilterStatus] = useState('all');
-              const statusChipLookup = {
-                'completed': { label: 'Abgeschlossen', className: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' },
-                'active': { label: 'Aktiv', className: 'bg-blue-500/10 text-blue-200 border border-blue-500/30' },
-                'open': { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' }
-              };
-              // Always use safe for filtered/sorted
-              const filteredMissions = filterStatus === 'all'
-                ? missionsDisplay
-                : safe(missionsDisplay).filter(m => m.status === filterStatus);
-              const filteredReallySafe = safe(filteredMissions);
-              const sortedMissions = [...filteredReallySafe].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
-              const sortedReallySafe = safe(sortedMissions);
-              const totalActiveMissions = safe(missionsDisplay).filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
-              const arraysValid = [missionsSafe, missionsDisplay, filteredReallySafe, sortedReallySafe].every(Array.isArray);
-              const hasMissions = arraysValid && sortedReallySafe.length > 0;
-              try {
-                return (
-                  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="w-full max-w-2xl max-h-[85vh] bg-[#0a0d14] border border-slate-800 rounded-3xl overflow-y-auto shadow-2xl">
-                      <div className="sticky top-0 bg-[#0a0d14] border-b border-slate-800 px-6 py-4 space-y-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h2 className="text-2xl font-black text-white">Alle Missionen</h2>
-                            <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Impact pro Monat</p>
-                            <p className="text-[10px] text-slate-400 mt-1">{window.location.hostname.includes('www') ? 'Du bist auf www – lokale Daten können leer sein.' : ''}</p>
-                          </div>
-                          <button onClick={props.onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
-                            <Icon name="X" size={20} className="text-slate-500" />
-                          </button>
-                        </div>
-                        <div className="flex justify-between items-center pt-2 border-t border-slate-800/50">
-                          <div className="text-xs">
-                            <span className="text-slate-500">Aktive Missionen:</span>
-                            <span className="text-lg font-black text-emerald-400 ml-2">+{totalActiveMissions} EUR / Monat</span>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 pt-2">
-                          {['all', 'open', 'active', 'completed'].map((status) => {
-                            const labels = { all: 'Alle', open: 'Offen', active: 'Aktiv', completed: 'Erledigt' };
-                            return (
-                              <button
-                                key={status}
-                                onClick={() => setFilterStatus(status)}
-                                className={'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ' + (filterStatus === status ? 'bg-indigo-600 text-white' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700')}
-                              >
-                                {labels[status]}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <div className="p-6 space-y-3">
-                        {hasMissions ? (
-                          safe(sortedReallySafe).map(m => {
-                            const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
-                            return (
-                              <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{m.category}</span>
-                                  <span className={'text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase ' + statusChip.className}>{statusChip.label}</span>
-                                </div>
-                                <h4 className="font-bold text-white text-base">{m.title}</h4>
-                                <div className="text-lg font-black text-emerald-400 mb-2">+{m.impactPerMonth}</div>
-                                <p className="text-xs text-slate-400 mb-3">{m.desc}</p>
-                                {m.status === 'open' && (
-                                  <button onClick={() => props.onAccept && props.onAccept(m.id)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                                    Mission starten
-                                  </button>
-                                )}
-                                {m.status === 'active' && (
-                                  <button onClick={() => props.onComplete && props.onComplete(m.id)} className="w-full py-3 bg-white text-slate-950 rounded-xl text-xs font-bold hover:bg-slate-100 flex items-center justify-center gap-2">
-                                    ✓ Erledigt
-                                  </button>
-                                )}
-                                {m.status === 'completed' && (
-                                  <div className="w-full py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                                    ✓ Abgeschlossen
-                                  </div>
-                                )}
-                                <button onClick={() => props.onTogglePinned && props.onTogglePinned(m.id)} className="p-1 hover:bg-slate-700 rounded transition-all mt-2">
-                                  <Icon name="Star" size={16} className={m.pinned ? "text-yellow-400 fill-yellow-400" : "text-slate-600"} />
-                                </button>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <div className="text-slate-400 text-xs">Keine Missionen gefunden.</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              } catch (e) {
-                return <div className="text-red-500 p-8">Fehler in MissionsOverlay: {String(e)}</div>;
-              }
-            }
+            type: "info"
       if (prompt.includes("hebel")) return { aiResponse: prefix + "Groesster Hebel: Personal." };
       const delta = (params?.price||0) + (params?.volume||0) - (params?.cost||0);
       return { aiResponse: prefix + (delta > 10 ? "Signifikanter Hebel: +" + delta + "%" : delta < -10 ? "Vorsicht: Verlust!" : "Neutral. Staerkere Hebel vorhanden.") };
@@ -323,69 +210,20 @@
 
     // === HEADER ===
     const Header = ({ xp, levelName, streak, onOpenSettings, onOpenImport, onOpenReport, onOpenFocus, isScanning, focusMode }) => {
-      const focusModeConfig = {
-        'none': { label: 'Kein Fokus', color: 'slate' },
-        'cost_down': { label: 'Kosten ↓', color: 'orange' },
-        'revenue_up': { label: 'Umsatz ↑', color: 'emerald' },
-        'anomalies': { label: 'Anomalien', color: 'red' },
-        'mix_synergy': { label: 'Mix', color: 'purple' },
-        'tier_mode': { label: 'Tier Mode', color: 'yellow' }
-      };
-      const currentFocus = focusModeConfig[focusMode] || focusModeConfig['none'];
-      return (
-        <header className="sticky top-0 z-30 bg-[#050505]/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="relative w-8 h-8 rounded-md bg-[#0a0d14] border border-white/5 p-1 shadow-[0_0_20px_rgba(99,102,241,0.25)]">
-                <img src="./assets/finwing-logo.png" alt="FinWing Logo" className="w-full h-full object-contain" />
-                {isScanning && <div className="absolute inset-0 rounded-md bg-indigo-500/20 animate-ping"></div>}
-              </div>
-              <div className="leading-tight truncate">
-                <div className="font-black text-white text-sm tracking-tight">FinWing</div>
-                <div className="text-[10px] font-bold text-indigo-400 uppercase hidden sm:block">Cash Manager</div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={onOpenFocus} className={focusMode !== 'none' ? 'w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-700 relative bg-indigo-500/20' : 'w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-700 relative bg-slate-800/80'} title="Fokus wählen">
-                <Icon name="Crosshair" size={18} className={focusMode !== 'none' ? 'text-indigo-400' : 'text-slate-400'} />
-                {focusMode !== 'none' && <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#050505]"></span>}
-              </button>
-              <button onClick={onOpenReport} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
-                <Icon name="FileText" size={18} className="text-indigo-400" />
-              </button>
-              <button onClick={onOpenImport} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
-                <Icon name="Upload" size={18} className="text-emerald-400" />
-              </button>
-              <button onClick={onOpenSettings} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
-                <Icon name="Settings" size={18} className="text-slate-400" />
-              </button>
-            </div>
-          </div>
-        </header>
-      );
+        uber: {
+          title: "Analyse: Uber Eats",
+          side: "in",
+          items: [
+            { name: "Abend-Peak (18–21h)", unit: "Bestellungen", amount: 120, total: 2100, ly: 1900, trend: 0.11 },
+            { name: "Spätabend (21–23h)", unit: "Bestellungen", amount: 60, total: 1000, ly: 900, trend: 0.11 }
+          ],
+          insight: {
+            type: "info"
+          }
+        }
+      }
     };
-
-    // === STATUS SECTION ===
-    const StatusSection = ({ data }) => {
-      const reserved = (data.upcomingPayments || []).reduce((s, i) => s + i.amount, 0);
-      const available = data.cashBalance - reserved;
-      const totalCosts = Object.values(data.costs || {}).reduce((a, b) => a + b, 0);
-      const runwayDays = totalCosts > 0 ? Math.floor((available / totalCosts) * 30) : 999;
-      return (
-        <div className="bg-gradient-to-br from-[#0f131a] to-[#0a0d12] rounded-[2rem] border border-emerald-500/20 p-6">
-          <div className="flex justify-between items-center mb-6">
-            <div className="text-slate-400 text-xs font-bold uppercase">Liquidität</div>
-            <div className="px-3 py-1.5 rounded-full bg-emerald-500 text-black text-[10px] font-black">✓ STABIL</div>
-          </div>
-          <div className="flex items-center gap-4 mb-8">
-            <span className="text-6xl font-black text-white">{runwayDays}</span>
-            <div>
-              <span className="text-xl text-slate-500 font-bold uppercase block">Tage Puffer</span>
-              <span className="text-[10px] text-slate-600">bei aktuellem Burn-Rate</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4 border-t border-slate-800/50 pt-5">
-            <div>
+    // ...existing code...
               <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Verfügbar</div>
               <div className="text-2xl font-bold text-emerald-400">{formatEuro(available)}</div>
             </div>
@@ -1219,11 +1057,11 @@
         'open': { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' }
       };
       const filteredMissions = filterStatus === 'all'
-        ? missionsDisplay
-        : missionsDisplay.filter(m => m.status === filterStatus);
-      const sortedMissions = [...filteredMissions].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
-      const totalActiveMissions = missionsDisplay.filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
-      const hasMissions = sortedMissions.length > 0;
+        ? asArray(missionsDisplay)
+        : asArray(missionsDisplay).filter(m => m.status === filterStatus);
+      const sortedMissions = [...asArray(filteredMissions)].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
+      const totalActiveMissions = asArray(missionsDisplay).filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
+      const hasMissions = asArray(sortedMissions).length > 0;
 
       return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1262,7 +1100,7 @@
             </div>
             <div className="p-6 space-y-3">
               {hasMissions ? (
-                sortedMissions.map(m => {
+                asArray(sortedMissions).map(m => {
                   const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
                   return (
                     <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
@@ -1750,104 +1588,18 @@
           </main>
           <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-sm bg-[#121212] border border-slate-800 rounded-full shadow-2xl z-40 p-1.5 flex justify-between">
             <button onClick={() => setView("cockpit")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'cockpit' ? 'bg-white text-black' : 'text-slate-500')}>
-              // Demo laden button: only show if no missions
-              const handleSeedDemo = () => {
-                setMissions(demoMissions);
-                window.localStorage.setItem('finwing.missions', JSON.stringify(demoMissions));
-              };
-              return (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                  <div className="w-full max-w-2xl max-h-[85vh] bg-[#0a0d14] border border-slate-800 rounded-3xl overflow-y-auto shadow-2xl">
-                    <div className="sticky top-0 bg-[#0a0d14] border-b border-slate-800 px-6 py-4 space-y-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h2 className="text-2xl font-black text-white">Alle Missionen</h2>
-                          <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Impact pro Monat</p>
-                          <p className="text-[10px] text-slate-400 mt-1">{window.location.hostname.includes('www') ? 'Du bist auf www – lokale Daten können leer sein.' : ''}</p>
-                        </div>
-                        <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
-                          <Icon name="X" size={20} className="text-slate-500" />
-                        </button>
-                      </div>
-                      <div className="flex justify-between items-center pt-2 border-t border-slate-800/50">
-                        <div className="text-xs">
-                          <span className="text-slate-500">Aktive Missionen:</span>
-                          <span className="text-lg font-black text-emerald-400 ml-2">+{totalActiveMissions} EUR / Monat</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 pt-2">
-                        {['all', 'open', 'active', 'completed'].map((status) => {
-                          const labels = { all: 'Alle', open: 'Offen', active: 'Aktiv', completed: 'Erledigt' };
-                          return (
-                            <button
-                              key={status}
-                              onClick={() => setFilterStatus(status)}
-                              className={'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ' + (filterStatus === status ? 'bg-indigo-600 text-white' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700')}
-                            >
-                              {labels[status]}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {!hasMissions && (
-                        <div className="flex justify-center mt-4">
-                          <button onClick={handleSeedDemo} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-2">
-                            <Icon name=\"RefreshCw\" size={14} className=\"text-white\" /> Demo laden
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-6 space-y-3">
-                      {hasMissions ? (
-                        sortedReallySafe.map(m => {
-                          const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
-                          return (
-                            <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
-                              <div className="flex justify-between items-start mb-3">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{m.category}</span>
-                                  <span className={'text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase ' + statusChip.className}>{statusChip.label}</span>
-                                </div>
-                                <button onClick={() => onTogglePinned(m.id)} className="p-1 hover:bg-slate-700 rounded transition-all">
-                                  <Icon name="Star" size={16} className={m.pinned ? "text-yellow-400 fill-yellow-400" : "text-slate-600"} />
-                                </button>
-                              </div>
-                              <div className="flex items-center justify-between mb-2">
-                                <h4 className="font-bold text-white text-base">{m.title}</h4>
-                                <div className="text-lg font-black text-emerald-400">+{m.impactPerMonth}</div>
-                              </div>
-                              <div className="flex items-center justify-between mb-3">
-                                <p className="text-xs text-slate-400">{m.desc}</p>
-                                <div className="text-[10px] font-bold text-slate-500">EUR / Monat</div>
-                              </div>
-                              {m.status === 'open' && (
-                                <button onClick={() => onAccept(m.id)} className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                                  Mission starten
-                                </button>
-                              )}
-                              {m.status === 'active' && (
-                                <button onClick={() => onComplete(m.id)} className="w-full py-2 bg-white/90 text-slate-950 rounded-xl text-xs font-semibold hover:bg-white flex items-center justify-center gap-2">
-                                  ✓ Erledigt
-                                </button>
-                              )}
-                              {m.status === 'completed' && (
-                                <div className="w-full py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                                  ✓ Abgeschlossen
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="text-center text-slate-400 text-xs py-8">Keine Missionen vorhanden. <br/> <span className='block mt-2'>Du kannst mit <b>Demo laden</b> Beispiel-Missionen einfügen.</span></div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-        </div>
-      );
-    }
+              <Icon name="Home" size={20} className="mr-2" /> Cockpit
+            </button>
+            <button onClick={() => setView("flow")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'flow' ? 'bg-white text-black' : 'text-slate-500')}>
+              <Icon name="Activity" size={20} className="mr-2" /> Flow
+            </button>
+            <button onClick={() => setView("sandbox")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'sandbox' ? 'bg-white text-black' : 'text-slate-500')}>
+              <Icon name="Sparkles" size={20} className="mr-2" /> Sandbox
+            </button>
+            <button onClick={() => setView("journal")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'journal' ? 'bg-white text-black' : 'text-slate-500')}>
+              <Icon name="BookOpen" size={20} className="mr-2" /> Logbuch
+            </button>
+          </nav>
 
     // Wait for Lucide to load - with visual debugging
     const initApp = () => {
