@@ -44,7 +44,11 @@
   <div id="root"></div>
 
   <script type="text/babel" data-presets="env,react,typescript">
+
     const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+    // Crash-proof: always map on arrays
+    const asArray = (v) => Array.isArray(v) ? v : [];
 
     // === LocalStorage ===
     const loadFromStorage = (key, defaultValue) => {
@@ -222,20 +226,20 @@
 
     const computePeriodData = (config, period = 'month') => {
       const scale = period === 'year' ? 12 : 1;
-      const revenues = config.revenues.map((r) => {
+      const revenues = asArray(config.revenues).map((r) => {
         const current = r.value * scale;
         const lastYear = current / (1 + (r.trendYoY || 0));
         return { ...r, current, lastYear };
       });
-      const costs = config.costs.map((c) => {
+      const costs = asArray(config.costs).map((c) => {
         const current = c.value * scale;
         const lastYear = current / (1 + (c.trendYoY || 0));
         return { ...c, current, lastYear };
       });
-      const totalRev = revenues.reduce((a, b) => a + b.current, 0);
-      const totalCost = costs.reduce((a, b) => a + b.current, 0);
-      const totalRevLy = revenues.reduce((a, b) => a + b.lastYear, 0);
-      const totalCostLy = costs.reduce((a, b) => a + b.lastYear, 0);
+      const totalRev = asArray(revenues).reduce((a, b) => a + b.current, 0);
+      const totalCost = asArray(costs).reduce((a, b) => a + b.current, 0);
+      const totalRevLy = asArray(revenues).reduce((a, b) => a + b.lastYear, 0);
+      const totalCostLy = asArray(costs).reduce((a, b) => a + b.lastYear, 0);
       const net = totalRev - totalCost;
       const netLy = totalRevLy - totalCostLy;
       const netTrend = netLy !== 0 ? (net - netLy) / Math.abs(netLy) : 0;
@@ -386,8 +390,8 @@
       const netYoY = toYoY(periodData.net, periodData.netLy);
       const netPositive = netYoY.deltaAbs >= 0;
 
-      const costsWithYoY = (periodData.costs || []).map(c => ({ ...c, yoy: toYoY(c.current, c.lastYear) }));
-      const revenuesWithYoY = (periodData.revenues || []).map(r => ({ ...r, yoy: toYoY(r.current, r.lastYear) }));
+      const costsWithYoY = asArray(periodData.costs).map(c => ({ ...c, yoy: toYoY(c.current, c.lastYear) }));
+      const revenuesWithYoY = asArray(periodData.revenues).map(r => ({ ...r, yoy: toYoY(r.current, r.lastYear) }));
       const topRisk = (Array.isArray(costsWithYoY)?costsWithYoY:[]).filter(c => c.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
       const topChance = (Array.isArray(revenuesWithYoY)?revenuesWithYoY:[]).filter(r => r.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
       const driver = topRisk ? { type: 'risk', label: topRisk.label, yoy: topRisk.yoy } : topChance ? { type: 'chance', label: topChance.label, yoy: topChance.yoy } : null;
@@ -439,8 +443,8 @@
 
     // === INSIGHT CARDS (radar: chance + risiko, unified KPI layout) ===
     const InsightCards = ({ periodData, period, onPeriodChange, focusMode }) => {
-      const revenuesYoY = (periodData.revenues || []).map(r => ({ ...r, yoy: toYoY(r.current, r.lastYear) }));
-      const costsYoY = (periodData.costs || []).map(c => ({ ...c, yoy: toYoY(c.current, c.lastYear) }));
+      const revenuesYoY = asArray(periodData.revenues).map(r => ({ ...r, yoy: toYoY(r.current, r.lastYear) }));
+      const costsYoY = asArray(periodData.costs).map(c => ({ ...c, yoy: toYoY(c.current, c.lastYear) }));
       const topChance = (Array.isArray(revenuesYoY)?revenuesYoY:[]).filter(r => r.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
       const topRisk = (Array.isArray(costsYoY)?costsYoY:[]).filter(c => c.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
       const isRevenueEmphasis = focusMode === 'revenue_up';
@@ -1224,7 +1228,7 @@
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  {['all', 'open', 'active', 'completed'].map((status) => {
+                  {asArray(['all', 'open', 'active', 'completed']).map((status) => {
                     const labels = { all: 'Alle', open: 'Offen', active: 'Aktiv', completed: 'Erledigt' };
                     return (
                       <button
@@ -1240,7 +1244,7 @@
               </div>
               <div className="p-6 space-y-3">
                 {hasMissions ? (
-                  sortedReallySafe.map(m => {
+                  asArray(sortedReallySafe).map(m => {
                     const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
                     return (
                       <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
