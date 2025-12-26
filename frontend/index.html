@@ -179,7 +179,9 @@
               const delta = (params?.price||0) + (params?.volume||0) - (params?.cost||0);
               return prefix + (delta > 10 ? "Signifikanter Hebel: +" + delta + "%" : delta < -10 ? "Vorsicht: Verlust!" : "Neutral. Staerkere Hebel vorhanden.");
             })()
-          },
+          }
+        }
+      }
 
     // === Kategorisierung ===
     const categorizeSupplier = (supplierName) => {
