@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>FinWing – Cash Manager</title>
+  <!-- LIVE_MARKER: 2025-12-26 -->
   <link rel="icon" type="image/png" href="./assets/finwing-logo.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -47,21 +48,61 @@
 
     const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
-    // Crash-proof: always map on arrays
+    // Crash-proof: always map/filter/flatMap on arrays
     const asArray = (v) => Array.isArray(v) ? v : [];
 
-    // === LocalStorage ===
-    const loadFromStorage = (key, defaultValue) => {
-      };
 
-      // Fix: saveToStorage für Production-Fehler
-      const saveToStorage = (key, value) => {
+    // === Robust Missions Storage Helpers ===
+    const demoMissions = [
+      { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
+      { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
+      { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false },
+      { id: 4, title: "Personal schulen", category: "Personal", impactPerMonth: 150, desc: "Service-Training für Upselling", status: 'open', pinned: false },
+      { id: 5, title: "Energie sparen", category: "Betrieb", impactPerMonth: 90, desc: "LEDs & Zeitschaltuhren installieren", status: 'open', pinned: false },
+      { id: 6, title: "Social Media Push", category: "Marketing", impactPerMonth: 210, desc: "Instagram-Kampagne für Mittagsmenü", status: 'open', pinned: false }
+    ];
+
+
+    // === Robust Missions Normalization & Storage ===
+    function normalizeMissions(raw) {
+      // Accepts anything: string, array, object, null, undefined
+      // Always returns a valid array of mission objects
+      if (Array.isArray(raw)) {
+        return raw.filter(m => m && typeof m === 'object' && m.id && m.title);
+      }
+      if (typeof raw === 'string') {
         try {
-          localStorage.setItem(key, JSON.stringify(value));
+          const parsed = JSON.parse(raw);
+          return normalizeMissions(parsed);
         } catch (e) {
-          // Fehler ignorieren, damit App nicht crasht
+          return [];
         }
-      };
+      }
+      if (raw && typeof raw === 'object' && raw.missions && Array.isArray(raw.missions)) {
+        return normalizeMissions(raw.missions);
+      }
+      return [];
+    }
+
+    function loadMissions() {
+      try {
+        const raw = window.localStorage.getItem('finwing.missions');
+        const missions = normalizeMissions(raw);
+        return missions.length > 0 ? missions : demoMissions;
+      } catch (e) {
+        return demoMissions;
+      }
+    }
+
+    function saveMissions(missions) {
+      // Always save as a valid array, never 'undefined' or 'null' as string
+      try {
+        const safeMissions = normalizeMissions(missions);
+        window.localStorage.setItem('finwing.missions', JSON.stringify(safeMissions));
+      } catch (e) {
+        // ignore
+      }
+    }
 
     // === DATA CONFIG (canonical from FinWingApp.jsx) ===
     const DATA_CONFIG = {
@@ -132,126 +173,7 @@
             { name: "Spätabend (21–23h)", unit: "Bestellungen", amount: 60, total: 1000, ly: 900, trend: 0.11 }
           ],
           insight: {
-            type: "info",
-            title: "Gute Ergänzung – nicht Übertreiben",
-            text: "Unit Economics okay, aber keine Abhängigkeit von Plattformen aufbauen."
-          }
-        },
-        cogs: {
-          title: "Detail: Wareneinsatz",
-          side: "out",
-          isCost: true,
-          items: [
-            { name: "Frischeware", unit: "Anteil Umsatz", amount: 0.34, total: 7800, ly: 7200, trend: 0.08 },
-            { name: "Trockenware", unit: "Anteil Umsatz", amount: 0.12, total: 3200, ly: 3000, trend: 0.07 },
-            { name: "Getränke-EK", unit: "Anteil Umsatz", amount: 0.09, total: 2500, ly: 2200, trend: 0.14 }
-          ],
-          insight: {
-            type: "warning",
-            title: "Frischeanteil leicht zu hoch",
-            text: "Food-Cost 2–3 %-Punkte über Benchmark. Menüengineering lohnt sich."
-          }
-        },
-        pers: {
-          title: "Detail: Personal",
-          side: "out",
-          isCost: true,
-          items: [
-            { name: "Service", unit: "Stunden / Woche", amount: 180, total: 7200, ly: 6900, trend: 0.04 },
-            { name: "Küche", unit: "Stunden / Woche", amount: 210, total: 8400, ly: 8100, trend: 0.04 }
-          ],
-          insight: {
-            type: "warning",
-            title: "Dienstag & Mittwoch sind zu dicht besetzt",
-            text: "Personalkosten steigen schneller als Umsatz. Teste 1 Schicht weniger an schwachen Tagen."
-          }
-        },
-        fix: {
-          title: "Detail: Fixkosten",
-          side: "out",
-          isCost: true,
-          items: [
-            { name: "Miete", unit: "Monat", amount: 1, total: 4200, ly: 4100, trend: 0.02 },
-            { name: "Energie", unit: "Monat", amount: 1, total: 1650, ly: 2100, trend: -0.21 },
-            { name: "Versicherungen & Gebühren", unit: "Monat", amount: 1, total: 950, ly: 900, trend: 0.06 }
-          ],
-          insight: {
-            type: "info",
-            title: "Energie-Effizienz zahlt sich aus",
-            text: "Stromkosten -21 % durch neue Geräte. Weiter so!"
-          }
-        },
-        other: {
-          title: "Detail: Sonstiges",
-          side: "out",
-          isCost: true,
-          items: [
-            { name: "Marketing & Werbung", unit: "Monat", amount: 1, total: 850, ly: 600, trend: 0.42 },
-            { name: "Software & Tools", unit: "Monat", amount: 1, total: 420, ly: 380, trend: 0.11 },
-            { name: "Diverses", unit: "Monat", amount: 1, total: 280, ly: 300, trend: -0.07 }
-          ],
-          insight: {
-            type: "info",
-            title: "Marketing wird hochgefahren",
-            text: "Werbebudget +42 % für Social-Media-Kampagnen. ROI tracken!"
-          }
-        },
-        profit: {
-          title: "Gewinnanalyse",
-          isProfit: true,
-          items: [
-            { name: "Marge Speisen", unit: "x", amount: 1, total: 7500, ly: 6800, trend: 0.10 },
-            { name: "Marge Getränke", unit: "x", amount: 1, total: 11100, ly: 9500, trend: 0.17 }
-          ],
-          insight: {
-            type: "success",
-            title: "Gesamtbild",
-            text: "Gewinn stabil durch Getränke-Marge."
-          }
-        }
-      }
-    };
-
-    const formatEuro = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
-    const formatPercent = (val) => (val > 0 ? '+' : '') + val.toFixed(1) + '%';
-
-    // === Helper: compute YoY tuple for any item ===
-    const toYoY = (total, ly, scale = 1) => {
-      const current = (total || 0) * scale;
-      const previousYear = (ly || 0) * scale;
-      const deltaAbs = current - previousYear;
-      const deltaPct = previousYear !== 0 ? (deltaAbs / Math.abs(previousYear)) * 100 : 0;
-      return { current, previousYear, deltaAbs, deltaPct };
-    };
-
-    const computePeriodData = (config, period = 'month') => {
-      const scale = period === 'year' ? 12 : 1;
-      const revenues = asArray(config.revenues).map((r) => {
-        const current = r.value * scale;
-        const lastYear = current / (1 + (r.trendYoY || 0));
-        return { ...r, current, lastYear };
-      });
-      const costs = asArray(config.costs).map((c) => {
-        const current = c.value * scale;
-        const lastYear = current / (1 + (c.trendYoY || 0));
-        return { ...c, current, lastYear };
-      });
-      const totalRev = asArray(revenues).reduce((a, b) => a + b.current, 0);
-      const totalCost = asArray(costs).reduce((a, b) => a + b.current, 0);
-      const totalRevLy = asArray(revenues).reduce((a, b) => a + b.lastYear, 0);
-      const totalCostLy = asArray(costs).reduce((a, b) => a + b.lastYear, 0);
-      const net = totalRev - totalCost;
-      const netLy = totalRevLy - totalCostLy;
-      const netTrend = netLy !== 0 ? (net - netLy) / Math.abs(netLy) : 0;
-      return { revenues, costs, totalRev, totalCost, totalRevLy, totalCostLy, net, netLy, netTrend };
-    };
-
-    // === LLM Simulator (from FinWingApp.jsx) ===
-    const callLLMSimulator = async (engine, prompt, params) => {
-      const delay = engine === 'Claude' ? 2200 : engine === 'OpenAI' ? 1800 : 1500;
-      await new Promise(r => setTimeout(r, delay));
-      const prefix = engine === 'Claude' ? '[Claude] ' : engine === 'OpenAI' ? '[GPT-4] ' : '[Gemini] ';
-      if (prompt === "AUTO_SCAN") return { newMissions: [], newInsights: [] };
+            type: "info"
       if (prompt.includes("hebel")) return { aiResponse: prefix + "Groesster Hebel: Personal." };
       const delta = (params?.price||0) + (params?.volume||0) - (params?.cost||0);
       return { aiResponse: prefix + (delta > 10 ? "Signifikanter Hebel: +" + delta + "%" : delta < -10 ? "Vorsicht: Verlust!" : "Neutral. Staerkere Hebel vorhanden.") };
@@ -287,71 +209,53 @@
       return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} style={{display: 'inline-flex'}} />;
     };
 
-    // === HEADER ===
-    const Header = ({ xp, levelName, streak, onOpenSettings, onOpenImport, onOpenReport, onOpenFocus, isScanning, focusMode }) => {
-      const focusModeConfig = {
-        'none': { label: 'Kein Fokus', color: 'slate' },
-        'cost_down': { label: 'Kosten ↓', color: 'orange' },
-        'revenue_up': { label: 'Umsatz ↑', color: 'emerald' },
-        'anomalies': { label: 'Anomalien', color: 'red' },
-        'mix_synergy': { label: 'Mix', color: 'purple' },
-        'tier_mode': { label: 'Tier Mode', color: 'yellow' }
-      };
-      const currentFocus = focusModeConfig[focusMode] || focusModeConfig['none'];
+    // === HEADER WITH XP BAR ===
+    const Header = ({ xp = 1250, level = 8, levelName = "Optimizer", streak = 12, onOpenSettings, onOpenImport, onOpenReport, onOpenFocus, isScanning, focusMode }) => {
+      const maxXP = level * 500;
+      const xpProgress = (xp / maxXP) * 100;
+      
       return (
         <header className="sticky top-0 z-30 bg-[#050505]/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="relative w-8 h-8 rounded-md bg-[#0a0d14] border border-white/5 p-1 shadow-[0_0_20px_rgba(99,102,241,0.25)]">
+          <div className="flex justify-between items-center gap-4">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 p-1.5 shadow-[0_0_20px_rgba(99,102,241,0.3)]">
                 <img src="./assets/finwing-logo.png" alt="FinWing Logo" className="w-full h-full object-contain" />
-                {isScanning && <div className="absolute inset-0 rounded-md bg-indigo-500/20 animate-ping"></div>}
               </div>
-              <div className="leading-tight truncate">
-                <div className="font-black text-white text-sm tracking-tight">FinWing</div>
-                <div className="text-[10px] font-bold text-indigo-400 uppercase hidden sm:block">Cash Manager</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="font-black text-white text-base">FinWing</div>
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-500/10">
+                    <Icon name="Flame" size={10} className="text-orange-400" />
+                    <span className="text-[9px] font-bold text-orange-400">{streak} Tage</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" style={{ width: `${xpProgress}%` }} />
+                  </div>
+                  <div className="text-[10px] font-bold text-indigo-400">Lv.{level}</div>
+                </div>
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={onOpenFocus} className={focusMode !== 'none' ? 'w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-700 relative bg-indigo-500/20' : 'w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-700 relative bg-slate-800/80'} title="Fokus wählen">
-                <Icon name="Crosshair" size={18} className={focusMode !== 'none' ? 'text-indigo-400' : 'text-slate-400'} />
-                {focusMode !== 'none' && <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#050505]"></span>}
+              <button onClick={onOpenFocus} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-700 bg-slate-800/80">
+                <Icon name="Crosshair" size={16} className="text-slate-400" />
               </button>
-              <button onClick={onOpenReport} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
-                <Icon name="FileText" size={18} className="text-indigo-400" />
+              <button onClick={onOpenReport} className="w-9 h-9 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
+                <Icon name="FileText" size={16} className="text-indigo-400" />
               </button>
-              <button onClick={onOpenImport} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
-                <Icon name="Upload" size={18} className="text-emerald-400" />
+              <button onClick={onOpenImport} className="w-9 h-9 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
+                <Icon name="Upload" size={16} className="text-emerald-400" />
               </button>
-              <button onClick={onOpenSettings} className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
-                <Icon name="Settings" size={18} className="text-slate-400" />
+              <button onClick={onOpenSettings} className="w-9 h-9 rounded-full bg-slate-800/80 flex items-center justify-center hover:bg-slate-700">
+                <Icon name="Settings" size={16} className="text-slate-400" />
               </button>
             </div>
           </div>
         </header>
       );
     };
-
-    // === STATUS SECTION ===
-    const StatusSection = ({ data }) => {
-      const reserved = (data.upcomingPayments || []).reduce((s, i) => s + i.amount, 0);
-      const available = data.cashBalance - reserved;
-      const totalCosts = Object.values(data.costs || {}).reduce((a, b) => a + b, 0);
-      const runwayDays = totalCosts > 0 ? Math.floor((available / totalCosts) * 30) : 999;
-      return (
-        <div className="bg-gradient-to-br from-[#0f131a] to-[#0a0d12] rounded-[2rem] border border-emerald-500/20 p-6">
-          <div className="flex justify-between items-center mb-6">
-            <div className="text-slate-400 text-xs font-bold uppercase">Liquidität</div>
-            <div className="px-3 py-1.5 rounded-full bg-emerald-500 text-black text-[10px] font-black">✓ STABIL</div>
-          </div>
-          <div className="flex items-center gap-4 mb-8">
-            <span className="text-6xl font-black text-white">{runwayDays}</span>
-            <div>
-              <span className="text-xl text-slate-500 font-bold uppercase block">Tage Puffer</span>
-              <span className="text-[10px] text-slate-600">bei aktuellem Burn-Rate</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4 border-t border-slate-800/50 pt-5">
-            <div>
+    // ...existing code...
               <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Verfügbar</div>
               <div className="text-2xl font-bold text-emerald-400">{formatEuro(available)}</div>
             </div>
@@ -390,8 +294,8 @@
       const netYoY = toYoY(periodData.net, periodData.netLy);
       const netPositive = netYoY.deltaAbs >= 0;
 
-      const costsWithYoY = asArray(periodData.costs).map(c => ({ ...c, yoy: toYoY(c.current, c.lastYear) }));
-      const revenuesWithYoY = asArray(periodData.revenues).map(r => ({ ...r, yoy: toYoY(r.current, r.lastYear) }));
+      const costsWithYoY = (periodData.costs || []).map(c => ({ ...c, yoy: toYoY(c.current, c.lastYear) }));
+      const revenuesWithYoY = (periodData.revenues || []).map(r => ({ ...r, yoy: toYoY(r.current, r.lastYear) }));
       const topRisk = (Array.isArray(costsWithYoY)?costsWithYoY:[]).filter(c => c.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
       const topChance = (Array.isArray(revenuesWithYoY)?revenuesWithYoY:[]).filter(r => r.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
       const driver = topRisk ? { type: 'risk', label: topRisk.label, yoy: topRisk.yoy } : topChance ? { type: 'chance', label: topChance.label, yoy: topChance.yoy } : null;
@@ -443,8 +347,8 @@
 
     // === INSIGHT CARDS (radar: chance + risiko, unified KPI layout) ===
     const InsightCards = ({ periodData, period, onPeriodChange, focusMode }) => {
-      const revenuesYoY = asArray(periodData.revenues).map(r => ({ ...r, yoy: toYoY(r.current, r.lastYear) }));
-      const costsYoY = asArray(periodData.costs).map(c => ({ ...c, yoy: toYoY(c.current, c.lastYear) }));
+      const revenuesYoY = (periodData.revenues || []).map(r => ({ ...r, yoy: toYoY(r.current, r.lastYear) }));
+      const costsYoY = (periodData.costs || []).map(c => ({ ...c, yoy: toYoY(c.current, c.lastYear) }));
       const topChance = (Array.isArray(revenuesYoY)?revenuesYoY:[]).filter(r => r.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
       const topRisk = (Array.isArray(costsYoY)?costsYoY:[]).filter(c => c.yoy.deltaPct > 0).sort((a, b) => b.yoy.deltaPct - a.yoy.deltaPct)[0];
       const isRevenueEmphasis = focusMode === 'revenue_up';
@@ -1172,23 +1076,11 @@
 
     // === MISSIONS OVERLAY ===
 
-    // Crash-proof MissionsOverlay: keine Destructuring-Parameter, safe() für alle Arrays, try/catch-Fallback
+
     function MissionsOverlay(props) {
       props = props || {};
-      const safe = (v) => Array.isArray(v) ? v : [];
-      // Demo missions fallback
-      const demoMissions = [
-        { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
-        { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
-        { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false },
-        { id: 4, title: "Personal schulen", category: "Personal", impactPerMonth: 150, desc: "Service-Training für Upselling", status: 'open', pinned: false },
-        { id: 5, title: "Energie sparen", category: "Betrieb", impactPerMonth: 90, desc: "LEDs & Zeitschaltuhren installieren", status: 'open', pinned: false },
-        { id: 6, title: "Social Media Push", category: "Marketing", impactPerMonth: 210, desc: "Instagram-Kampagne für Mittagsmenü", status: 'open', pinned: false },
-        { id: 7, title: "Karten-Optimierung", category: "Mix", impactPerMonth: 120, desc: "Unrentable Gerichte streichen", status: 'open', pinned: false },
-        { id: 8, title: "Kundenfeedback sammeln", category: "Vertrieb", impactPerMonth: 60, desc: "Feedback-Box am Tresen", status: 'open', pinned: false }
-      ];
-      // Safe all arrays
-      const missionsSafe = safe(props.missions);
+      // Always use normalized missions array
+      const missionsSafe = normalizeMissions(props.missions);
       const missionsDisplay = missionsSafe.length === 0 ? demoMissions : missionsSafe;
       const [filterStatus, setFilterStatus] = useState('all');
       const statusChipLookup = {
@@ -1196,96 +1088,89 @@
         'active': { label: 'Aktiv', className: 'bg-blue-500/10 text-blue-200 border border-blue-500/30' },
         'open': { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' }
       };
-      // Always use safe for filtered/sorted
       const filteredMissions = filterStatus === 'all'
-        ? missionsDisplay
-        : safe(missionsDisplay).filter(m => m.status === filterStatus);
-      const filteredReallySafe = safe(filteredMissions);
-      const sortedMissions = [...filteredReallySafe].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
-      const sortedReallySafe = safe(sortedMissions);
-      const totalActiveMissions = safe(missionsDisplay).filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
-      const arraysValid = [missionsSafe, missionsDisplay, filteredReallySafe, sortedReallySafe].every(Array.isArray);
-      const hasMissions = arraysValid && sortedReallySafe.length > 0;
-      // Fallback UI + try/catch
-      try {
-        return (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-2xl max-h-[85vh] bg-[#0a0d14] border border-slate-800 rounded-3xl overflow-y-auto shadow-2xl">
-              <div className="sticky top-0 bg-[#0a0d14] border-b border-slate-800 px-6 py-4 space-y-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-2xl font-black text-white">Alle Missionen</h2>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Impact pro Monat</p>
-                  </div>
-                  <button onClick={props.onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
-                    <Icon name="X" size={20} className="text-slate-500" />
-                  </button>
+        ? asArray(missionsDisplay)
+        : asArray(missionsDisplay).filter(m => m.status === filterStatus);
+      const sortedMissions = [...asArray(filteredMissions)].sort((a, b) => b.impactPerMonth - a.impactPerMonth);
+      const totalActiveMissions = asArray(missionsDisplay).filter(m => m.status === 'active').reduce((sum, m) => sum + m.impactPerMonth, 0);
+      const hasMissions = asArray(sortedMissions).length > 0;
+
+      return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl max-h-[85vh] bg-[#0a0d14] border border-slate-800 rounded-3xl overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-[#0a0d14] border-b border-slate-800 px-6 py-4 space-y-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-black text-white">Alle Missionen</h2>
+                  <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Impact pro Monat</p>
+                  <p className="text-[10px] text-slate-400 mt-1">{window.location.hostname.includes('www') ? 'Du bist auf www – lokale Daten können leer sein.' : ''}</p>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-slate-800/50">
-                  <div className="text-xs">
-                    <span className="text-slate-500">Aktive Missionen:</span>
-                    <span className="text-lg font-black text-emerald-400 ml-2">+{totalActiveMissions} EUR / Monat</span>
-                  </div>
-                </div>
-                <div className="flex gap-2 pt-2">
-                  {asArray(['all', 'open', 'active', 'completed']).map((status) => {
-                    const labels = { all: 'Alle', open: 'Offen', active: 'Aktiv', completed: 'Erledigt' };
-                    return (
-                      <button
-                        key={status}
-                        onClick={() => setFilterStatus(status)}
-                        className={'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ' + (filterStatus === status ? 'bg-indigo-600 text-white' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700')}
-                      >
-                        {labels[status]}
-                      </button>
-                    );
-                  })}
+                <button onClick={props.onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
+                  <Icon name="X" size={20} className="text-slate-500" />
+                </button>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-slate-800/50">
+                <div className="text-xs">
+                  <span className="text-slate-500">Aktive Missionen:</span>
+                  <span className="text-lg font-black text-emerald-400 ml-2">+{totalActiveMissions} EUR / Monat</span>
                 </div>
               </div>
-              <div className="p-6 space-y-3">
-                {hasMissions ? (
-                  asArray(sortedReallySafe).map(m => {
-                    const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
-                    return (
-                      <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{m.category}</span>
-                          <span className={'text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase ' + statusChip.className}>{statusChip.label}</span>
-                        </div>
-                        <h4 className="font-bold text-white text-base">{m.title}</h4>
-                        <div className="text-lg font-black text-emerald-400 mb-2">+{m.impactPerMonth}</div>
-                        <p className="text-xs text-slate-400 mb-3">{m.desc}</p>
-                        {m.status === 'open' && (
-                          <button onClick={() => props.onAccept && props.onAccept(m.id)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                            Mission starten
-                          </button>
-                        )}
-                        {m.status === 'active' && (
-                          <button onClick={() => props.onComplete && props.onComplete(m.id)} className="w-full py-3 bg-white text-slate-950 rounded-xl text-xs font-bold hover:bg-slate-100 flex items-center justify-center gap-2">
-                            ✓ Erledigt
-                          </button>
-                        )}
-                        {m.status === 'completed' && (
-                          <div className="w-full py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                            ✓ Abgeschlossen
-                          </div>
-                        )}
-                        <button onClick={() => props.onTogglePinned && props.onTogglePinned(m.id)} className="p-1 hover:bg-slate-700 rounded transition-all mt-2">
-                          <Icon name="Star" size={16} className={m.pinned ? "text-yellow-400 fill-yellow-400" : "text-slate-600"} />
-                        </button>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-slate-400 text-xs">Keine Missionen gefunden.</div>
-                )}
+              <div className="flex gap-2 pt-2">
+                {['all', 'open', 'active', 'completed'].map((status) => {
+                  const labels = { all: 'Alle', open: 'Offen', active: 'Aktiv', completed: 'Erledigt' };
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => setFilterStatus(status)}
+                      className={'px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all ' + (filterStatus === status ? 'bg-indigo-600 text-white' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700')}
+                    >
+                      {labels[status]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
+            <div className="p-6 space-y-3">
+              {hasMissions ? (
+                asArray(sortedMissions).map(m => {
+                  const statusChip = statusChipLookup[m.status] || { label: 'Offen', className: 'bg-slate-800 text-slate-300 border border-slate-700' };
+                  return (
+                    <div key={m.id} className={'bg-[#141824] border rounded-2xl p-5 ' + (m.pinned ? 'border-emerald-500/40' : 'border-slate-800')}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase text-indigo-400">{m.category}</span>
+                        <span className={'text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase ' + statusChip.className}>{statusChip.label}</span>
+                      </div>
+                      <h4 className="font-bold text-white text-base">{m.title}</h4>
+                      <div className="text-lg font-black text-emerald-400 mb-2">+{m.impactPerMonth}</div>
+                      <p className="text-xs text-slate-400 mb-3">{m.desc}</p>
+                      {m.status === 'open' && (
+                        <button onClick={() => props.onAccept && props.onAccept(m.id)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                          Mission starten
+                        </button>
+                      )}
+                      {m.status === 'active' && (
+                        <button onClick={() => props.onComplete && props.onComplete(m.id)} className="w-full py-3 bg-white text-slate-950 rounded-xl text-xs font-bold hover:bg-slate-100 flex items-center justify-center gap-2">
+                          ✓ Erledigt
+                        </button>
+                      )}
+                      {m.status === 'completed' && (
+                        <div className="w-full py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                          ✓ Abgeschlossen
+                        </div>
+                      )}
+                      <button onClick={() => props.onTogglePinned && props.onTogglePinned(m.id)} className="p-1 hover:bg-slate-700 rounded transition-all mt-2">
+                        <Icon name="Star" size={16} className={m.pinned ? "text-yellow-400 fill-yellow-400" : "text-slate-600"} />
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-slate-400 text-xs">Keine Missionen gefunden.</div>
+              )}
+            </div>
           </div>
-        );
-      } catch (e) {
-        return <div className="text-red-500 p-8">Fehler in MissionsOverlay: {String(e)}</div>;
-      }
+        </div>
+      );
     }
 
     // === ADVISOR OVERLAY ===
@@ -1423,7 +1308,7 @@
                 <span className="text-[10px] text-slate-500 font-bold uppercase">Top 3 Treiber</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {(drill.items || []).slice(0,3).map((item, idx) => {
+                asArray(drill.items).slice(0,3).map((item, idx) => {
                   const yoy = toYoY(item.total, item.ly, scale);
                   return (
                     <div key={idx} className="p-3 rounded-xl bg-[#141824] border border-slate-800">
@@ -1464,7 +1349,7 @@
               </button>
             </div>
             <div className="space-y-3 mb-6">
-              {focusModes.map(mode => (
+              {asArray(focusModes).map(mode => (
                 <button key={mode.id} onClick={() => onSelectFocus(mode.id)} className={focusMode === mode.id ? 'w-full text-left p-4 rounded-xl border-2 transition-all border-indigo-500 bg-indigo-500/10 hover:border-indigo-400' : 'w-full text-left p-4 rounded-xl border-2 transition-all border-slate-700 bg-slate-800/50 hover:border-slate-600'}>
                   <div className="flex items-start gap-3">
                     <div className={focusMode === mode.id ? 'w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-500/20' : 'w-12 h-12 rounded-xl flex items-center justify-center bg-slate-700/50'}>
@@ -1507,23 +1392,23 @@
         let signals = [];
         
         // Calculate deltaPct using toYoY helper
-        const costsWithYoY = (periodData.costs || []).map(c => ({ ...c, ...toYoY(c.current, c.lastYear) }));
-        const revenuesWithYoY = (periodData.revenues || []).map(r => ({ ...r, ...toYoY(r.current, r.lastYear) }));
+        const costsWithYoY = asArray(periodData.costs).map(c => ({ ...c, ...toYoY(c.current, c.lastYear) }));
+        const revenuesWithYoY = asArray(periodData.revenues).map(r => ({ ...r, ...toYoY(r.current, r.lastYear) }));
         
         if (focusMode === 'cost_down') {
-          const worstCost = (Array.isArray(costsWithYoY)?costsWithYoY:[]).filter(c => c.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
+          const worstCost = asArray(costsWithYoY).filter(c => c.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
           if (worstCost) signals.push(`${worstCost.label} ${formatPercent(worstCost.deltaPct)} vs VJ`);
-          const cogsCost = costsWithYoY.find(c => c.id === 'cogs');
+          const cogsCost = asArray(costsWithYoY).find(c => c.id === 'cogs');
           if (cogsCost && cogsCost.deltaPct > 5) signals.push(`Wareneinsatz über Zielband`);
         } else if (focusMode === 'revenue_up') {
-          const bestRevenue = (Array.isArray(revenuesWithYoY)?revenuesWithYoY:[]).filter(r => r.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
+          const bestRevenue = asArray(revenuesWithYoY).filter(r => r.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
           if (bestRevenue) signals.push(`${bestRevenue.label} ${formatPercent(bestRevenue.deltaPct)} vs VJ`);
         } else if (focusMode === 'anomalies') {
-          const anomaly = [...revenuesWithYoY, ...costsWithYoY].find(item => Math.abs(item.deltaPct) > 25);
+          const anomaly = asArray([...asArray(revenuesWithYoY), ...asArray(costsWithYoY)]).find(item => Math.abs(item.deltaPct) > 25);
           if (anomaly) signals.push(`${anomaly.label}: ${anomaly.deltaPct > 0 ? 'Anstieg' : 'Rückgang'} ${formatPercent(Math.abs(anomaly.deltaPct))}`);
         } else if (focusMode === 'mix_synergy') {
-          const topRev = revenuesWithYoY.sort((a, b) => b.deltaAbs - a.deltaAbs)[0];
-          const lowRev = revenuesWithYoY.sort((a, b) => a.deltaPct - b.deltaPct)[0];
+          const topRev = asArray(revenuesWithYoY).sort((a, b) => b.deltaAbs - a.deltaAbs)[0];
+          const lowRev = asArray(revenuesWithYoY).sort((a, b) => a.deltaPct - b.deltaPct)[0];
           if (topRev && lowRev) signals.push(`${topRev.label} treibt, ${lowRev.label} bleibt zurück`);
         } else if (focusMode === 'tier_mode') {
           signals.push('Szenarien mit +10 % Preis / +5 % Menge testen');
@@ -1542,8 +1427,8 @@
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300">{focusData.label}</span>
           </div>
           <div className="space-y-2">
-            {focusData.signals.length > 0 ? (
-              focusData.signals.map((signal, idx) => (
+            {asArray(focusData.signals).length > 0 ? (
+              asArray(focusData.signals).map((signal, idx) => (
                 <div key={idx} className="text-xs text-white font-medium flex items-start gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1 shrink-0"></div>
                   {signal}
@@ -1620,11 +1505,8 @@
       const [journalDetail, setJournalDetail] = useState(null);
       const [focusMode, setFocusMode] = useState(() => loadFromStorage('finwing.focusMode', 'none'));
       const periodData = useMemo(() => computePeriodData(DATA_CONFIG, period), [period]);
-      const [missions, setMissions] = useState(() => loadFromStorage('finwing.missions', [
-        { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
-        { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
-        { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false }
-      ]));
+      // Use robust helpers for missions state
+      const [missions, setMissions] = useState(loadMissions);
       const [data] = useState({
         cashBalance: 45000,
         revenue: 48500,
@@ -1634,7 +1516,7 @@
       });
 
       useEffect(() => { saveToStorage('finwing.xp', xp); }, [xp]);
-      useEffect(() => { saveToStorage('finwing.missions', missions); }, [missions]);
+      useEffect(() => { saveMissions(missions); }, [missions]);
       useEffect(() => { saveToStorage('finwing.focusMode', focusMode); }, [focusMode]);
 
       const handleComplete = useCallback((id) => {
@@ -1671,11 +1553,15 @@
                     <h3 className="text-lg font-bold text-white">Deine Missionen</h3>
                     <button onClick={() => setShowMissionsOverlay(true)} className="text-sm font-bold text-indigo-400 hover:text-indigo-300">Alle »</button>
                   </div>
-                  <div className="space-y-3">
-                    {(Array.isArray(missions)?missions:[]).filter(m => m.status === 'active').sort(m => m.pinned ? -1 : 1).slice(0, 2).map(m => (
-                      <MissionCard key={m.id} {...m} onComplete={handleComplete} focusMode={focusMode} />
-                    ))}
-                  </div>
+                  {(() => {
+                    // Always use robust loadMissions for preview, never trust in-memory state only
+                    const previewList = (Array.isArray(missions) ? missions : loadMissions()).filter(m => m && typeof m === 'object' && m.id && m.title);
+                    const preview = previewList.slice(0, 3);
+                    if (preview.length > 0) {
+                      return <div className="space-y-3">{preview.map(m => <MissionCard key={m.id} {...m} onComplete={handleComplete} focusMode={focusMode} />)}</div>;
+                    }
+                    return <div className="text-xs text-slate-400 mt-2">Noch keine Missionen – <button className="underline text-indigo-400" onClick={() => setShowMissionsOverlay(true)}>Alle</button></div>;
+                  })()}
                 </div>
               </div>
             )}
@@ -1734,92 +1620,18 @@
           </main>
           <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-sm bg-[#121212] border border-slate-800 rounded-full shadow-2xl z-40 p-1.5 flex justify-between">
             <button onClick={() => setView("cockpit")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'cockpit' ? 'bg-white text-black' : 'text-slate-500')}>
-              <Icon name="Home" size={20} />
+              <Icon name="Home" size={20} className="mr-2" /> Cockpit
             </button>
-            <button onClick={() => setView("flow")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'flow' ? 'bg-emerald-500 text-white' : 'text-slate-500')}>
-              <Icon name="ArrowRightLeft" size={20} />
+            <button onClick={() => setView("flow")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'flow' ? 'bg-white text-black' : 'text-slate-500')}>
+              <Icon name="Activity" size={20} className="mr-2" /> Flow
             </button>
-            <button onClick={() => setView("sandbox")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'sandbox' ? 'bg-indigo-500 text-white' : 'text-slate-500')}>
-              <Icon name="Sliders" size={20} />
+            <button onClick={() => setView("sandbox")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'sandbox' ? 'bg-white text-black' : 'text-slate-500')}>
+              <Icon name="Sparkles" size={20} className="mr-2" /> Sandbox
             </button>
-            <button onClick={() => setView("journal")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'journal' ? 'bg-orange-500 text-white' : 'text-slate-500')}>
-              <Icon name="BookOpen" size={20} />
+            <button onClick={() => setView("journal")} className={'flex-1 py-3 rounded-full flex justify-center ' + (view === 'journal' ? 'bg-white text-black' : 'text-slate-500')}>
+              <Icon name="BookOpen" size={20} className="mr-2" /> Logbuch
             </button>
           </nav>
-
-          {showMissionsOverlay && (
-            <MissionsOverlay missions={missions} onClose={() => setShowMissionsOverlay(false)} onComplete={handleComplete} onTogglePinned={handleTogglePinned} onAccept={handleAcceptMission} focusMode={focusMode} />
-          )}
-
-          {showFocusOverlay && (
-            <FocusOverlay focusMode={focusMode} onClose={() => setShowFocusOverlay(false)} onSelectFocus={handleSetFocus} />
-          )}
-
-          {showAdvisorOverlay && (
-            <AdvisorOverlay open={showAdvisorOverlay} onClose={() => setShowAdvisorOverlay(false)} />
-          )}
-
-          {showSettingsOverlay && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-[#0a0d14] border border-slate-800 rounded-3xl p-8 max-w-sm w-full">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-black text-white">Einstellungen</h2>
-                  <button onClick={() => setShowSettingsOverlay(false)} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
-                    <Icon name="X" size={20} className="text-slate-500" />
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-xl border border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <Icon name="Bell" size={18} className="text-indigo-400" />
-                      <span className="text-white font-semibold">Benachrichtigungen</span>
-                    </div>
-                    <input type="checkbox" defaultChecked className="w-5 h-5 accent-indigo-600" />
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-xl border border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <Icon name="Moon" size={18} className="text-indigo-400" />
-                      <span className="text-white font-semibold">Dark Mode</span>
-                    </div>
-                    <input type="checkbox" defaultChecked className="w-5 h-5 accent-indigo-600" />
-                  </div>
-                </div>
-                <button onClick={() => setShowSettingsOverlay(false)} className="w-full mt-6 py-3 bg-white text-slate-950 rounded-xl font-bold hover:bg-slate-100">
-                  Schliessen
-                </button>
-              </div>
-            </div>
-          )}
-
-          {showImportOverlay && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-[#0a0d14] border border-slate-800 rounded-3xl p-8 max-w-sm w-full">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-black text-white">Daten importieren</h2>
-                  <button onClick={() => setShowImportOverlay(false)} className="p-2 hover:bg-slate-800 rounded-lg transition-all">
-                    <Icon name="X" size={20} className="text-slate-500" />
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:border-indigo-500 transition-all cursor-pointer">
-                    <Icon name="Upload" size={32} className="text-slate-500 mx-auto mb-2" />
-                    <p className="text-sm text-slate-400">CSV-Datei hier ablegen</p>
-                    <input type="file" accept=".csv" className="hidden" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Lightspeed API Key</label>
-                    <input type="password" placeholder="Paste API Key..." className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:border-indigo-500 outline-none" />
-                  </div>
-                </div>
-                <button onClick={() => setShowImportOverlay(false)} className="w-full mt-6 py-3 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-600">
-                  Abbrechen
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
 
     // Wait for Lucide to load - with visual debugging
     const initApp = () => {
