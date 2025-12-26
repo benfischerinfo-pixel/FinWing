@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>FinWing – Cash Manager</title>
+  <!-- LIVE_MARKER: 2025-12-26 -->
   <link rel="icon" type="image/png" href="./assets/finwing-logo.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
@@ -1276,7 +1277,7 @@
                 <span className="text-[10px] text-slate-500 font-bold uppercase">Top 3 Treiber</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {(drill.items || []).slice(0,3).map((item, idx) => {
+                asArray(drill.items).slice(0,3).map((item, idx) => {
                   const yoy = toYoY(item.total, item.ly, scale);
                   return (
                     <div key={idx} className="p-3 rounded-xl bg-[#141824] border border-slate-800">
@@ -1317,7 +1318,7 @@
               </button>
             </div>
             <div className="space-y-3 mb-6">
-              {focusModes.map(mode => (
+              {asArray(focusModes).map(mode => (
                 <button key={mode.id} onClick={() => onSelectFocus(mode.id)} className={focusMode === mode.id ? 'w-full text-left p-4 rounded-xl border-2 transition-all border-indigo-500 bg-indigo-500/10 hover:border-indigo-400' : 'w-full text-left p-4 rounded-xl border-2 transition-all border-slate-700 bg-slate-800/50 hover:border-slate-600'}>
                   <div className="flex items-start gap-3">
                     <div className={focusMode === mode.id ? 'w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-500/20' : 'w-12 h-12 rounded-xl flex items-center justify-center bg-slate-700/50'}>
@@ -1360,23 +1361,23 @@
         let signals = [];
         
         // Calculate deltaPct using toYoY helper
-        const costsWithYoY = (periodData.costs || []).map(c => ({ ...c, ...toYoY(c.current, c.lastYear) }));
-        const revenuesWithYoY = (periodData.revenues || []).map(r => ({ ...r, ...toYoY(r.current, r.lastYear) }));
+        const costsWithYoY = asArray(periodData.costs).map(c => ({ ...c, ...toYoY(c.current, c.lastYear) }));
+        const revenuesWithYoY = asArray(periodData.revenues).map(r => ({ ...r, ...toYoY(r.current, r.lastYear) }));
         
         if (focusMode === 'cost_down') {
-          const worstCost = (Array.isArray(costsWithYoY)?costsWithYoY:[]).filter(c => c.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
+          const worstCost = asArray(costsWithYoY).filter(c => c.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
           if (worstCost) signals.push(`${worstCost.label} ${formatPercent(worstCost.deltaPct)} vs VJ`);
-          const cogsCost = costsWithYoY.find(c => c.id === 'cogs');
+          const cogsCost = asArray(costsWithYoY).find(c => c.id === 'cogs');
           if (cogsCost && cogsCost.deltaPct > 5) signals.push(`Wareneinsatz über Zielband`);
         } else if (focusMode === 'revenue_up') {
-          const bestRevenue = (Array.isArray(revenuesWithYoY)?revenuesWithYoY:[]).filter(r => r.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
+          const bestRevenue = asArray(revenuesWithYoY).filter(r => r.deltaPct > 0).sort((a, b) => b.deltaPct - a.deltaPct)[0];
           if (bestRevenue) signals.push(`${bestRevenue.label} ${formatPercent(bestRevenue.deltaPct)} vs VJ`);
         } else if (focusMode === 'anomalies') {
-          const anomaly = [...revenuesWithYoY, ...costsWithYoY].find(item => Math.abs(item.deltaPct) > 25);
+          const anomaly = asArray([...asArray(revenuesWithYoY), ...asArray(costsWithYoY)]).find(item => Math.abs(item.deltaPct) > 25);
           if (anomaly) signals.push(`${anomaly.label}: ${anomaly.deltaPct > 0 ? 'Anstieg' : 'Rückgang'} ${formatPercent(Math.abs(anomaly.deltaPct))}`);
         } else if (focusMode === 'mix_synergy') {
-          const topRev = revenuesWithYoY.sort((a, b) => b.deltaAbs - a.deltaAbs)[0];
-          const lowRev = revenuesWithYoY.sort((a, b) => a.deltaPct - b.deltaPct)[0];
+          const topRev = asArray(revenuesWithYoY).sort((a, b) => b.deltaAbs - a.deltaAbs)[0];
+          const lowRev = asArray(revenuesWithYoY).sort((a, b) => a.deltaPct - b.deltaPct)[0];
           if (topRev && lowRev) signals.push(`${topRev.label} treibt, ${lowRev.label} bleibt zurück`);
         } else if (focusMode === 'tier_mode') {
           signals.push('Szenarien mit +10 % Preis / +5 % Menge testen');
@@ -1395,8 +1396,8 @@
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300">{focusData.label}</span>
           </div>
           <div className="space-y-2">
-            {focusData.signals.length > 0 ? (
-              focusData.signals.map((signal, idx) => (
+            {asArray(focusData.signals).length > 0 ? (
+              asArray(focusData.signals).map((signal, idx) => (
                 <div key={idx} className="text-xs text-white font-medium flex items-start gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1 shrink-0"></div>
                   {signal}
