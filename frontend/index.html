@@ -173,11 +173,13 @@
             { name: "Spätabend (21–23h)", unit: "Bestellungen", amount: 60, total: 1000, ly: 900, trend: 0.11 }
           ],
           insight: {
-            type: "info"
-      if (prompt.includes("hebel")) return { aiResponse: prefix + "Groesster Hebel: Personal." };
-      const delta = (params?.price||0) + (params?.volume||0) - (params?.cost||0);
-      return { aiResponse: prefix + (delta > 10 ? "Signifikanter Hebel: +" + delta + "%" : delta < -10 ? "Vorsicht: Verlust!" : "Neutral. Staerkere Hebel vorhanden.") };
-    };
+            type: "info",
+            aiResponse: (() => {
+              if (prompt.includes("hebel")) return prefix + "Groesster Hebel: Personal.";
+              const delta = (params?.price||0) + (params?.volume||0) - (params?.cost||0);
+              return prefix + (delta > 10 ? "Signifikanter Hebel: +" + delta + "%" : delta < -10 ? "Vorsicht: Verlust!" : "Neutral. Staerkere Hebel vorhanden.");
+            })()
+          },
 
     // === Kategorisierung ===
     const categorizeSupplier = (supplierName) => {
