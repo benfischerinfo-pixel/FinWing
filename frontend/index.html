@@ -1,3 +1,4 @@
+  }
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -18,20 +19,7 @@
       window.babelErrors.push(errorMsg);
       document.body.innerHTML = '<div style="background: #ef4444; color: white; padding: 20px; font-family: monospace; white-space: pre-wrap;"><h1>⚠️ SCRIPT ERROR</h1>' + errorMsg + '<hr/><h2>Console Errors:</h2><div id="console-errors"></div></div>';
     });
-        },
-    },
-  };
-    }
-  };
-  
-  // === Kategorisierung ===
-      const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-      if (msg.includes('SyntaxError') || msg.includes('Unexpected') || msg.includes('babel')) {
-        document.body.innerHTML = '<div style="background: #ef4444; color: white; padding: 20px; font-family: monospace; white-space: pre-wrap;"><h1>⚠️ BABEL/SYNTAX ERROR</h1><pre>' + msg + '</pre></div>';
-      }
-      originalConsoleError.apply(console, args);
-    }
-  </script>
+  // ...existing code...
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     * { -webkit-tap-highlight-color: transparent; }
@@ -46,42 +34,26 @@
 </head>
 <body class="bg-[#050505]">
   <div id="root"></div>
-
   <script type="text/babel" data-presets="env,react,typescript">
 
     const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
     // Crash-proof: always map/filter/flatMap on arrays
     const asArray = (v) => Array.isArray(v) ? v : [];
-
-
-    // === Robust Missions Storage Helpers ===
-    const demoMissions = [
-      { id: 1, title: "Lieferant verhandeln", category: "Einkauf", impactPerMonth: 420, desc: "Mozzarella +12%", status: 'active', pinned: true },
-      { id: 2, title: "Preise optimieren", category: "Umsatz", impactPerMonth: 650, desc: "+3% Top-10", status: 'active', pinned: false },
-      { id: 3, title: "Öffnungszeiten testen", category: "Vertrieb", impactPerMonth: 280, desc: "Freitag 22-23h", status: 'open', pinned: false },
-      { id: 4, title: "Personal schulen", category: "Personal", impactPerMonth: 150, desc: "Service-Training für Upselling", status: 'open', pinned: false },
-      { id: 5, title: "Energie sparen", category: "Betrieb", impactPerMonth: 90, desc: "LEDs & Zeitschaltuhren installieren", status: 'open', pinned: false },
-      { id: 6, title: "Social Media Push", category: "Marketing", impactPerMonth: 210, desc: "Instagram-Kampagne für Mittagsmenü", status: 'open', pinned: false }
-    ];
-
-
-    // === Robust Missions Normalization & Storage ===
-    function normalizeMissions(raw) {
       // Accepts anything: string, array, object, null, undefined
       // Always returns a valid array of mission objects
-      if (Array.isArray(raw)) {
-        return raw.filter(m => m && typeof m === 'object' && m.id && m.title);
-      }
-      if (typeof raw === 'string') {
-        try {
-          const parsed = JSON.parse(raw);
-          return normalizeMissions(parsed);
-        } catch (e) {
-          return [];
+      function normalizeMissions(raw) {
+        if (Array.isArray(raw)) {
+          return raw.filter(m => m && typeof m === 'object' && m.id && m.title);
         }
+        if (typeof raw === 'string') {
+          try {
+            const parsed = JSON.parse(raw);
+            return normalizeMissions(parsed);
+          } catch (e) {
+            return [];
+          }
       }
-    }
 
 // Wait for Lucide to load - with visual debugging
 const initApp = () => {
@@ -171,28 +143,46 @@ initApp();
           ],
           insight: {
             type: "info",
-            aiResponse: (() => {
-              if (prompt.includes("hebel")) return prefix + "Groesster Hebel: Personal.";
-              const delta = (params?.price||0) + (params?.volume||0) - (params?.cost||0);
-              return prefix + (delta > 10 ? "Signifikanter Hebel: +" + delta + "%" : delta < -10 ? "Vorsicht: Verlust!" : "Neutral. Staerkere Hebel vorhanden.");
-            })()
+            aiResponse: null,
           }
         }
-      }
-
+      },
     // === Kategorisierung ===
-    const categorizeSupplier = (supplierName) => {
-      const name = (supplierName || '').toLowerCase().trim();
-      if (/lightspeed|stripe|paypal|sumup|square/.test(name)) return 'Zahlungsanbieter';
-      if (/supermarkt|rewe|aldi|lidl|edeka|metro/.test(name)) return 'Wareneinkauf';
-      if (/bäck|metzger|fleisch|fisch|obst|gemüse/.test(name)) return 'Lebensmittel';
-      if (/steuer|finanzamt|umsatzsteuer/.test(name)) return 'Steuern';
-      if (/strom|gas|telefon|internet|vodafone|telekom/.test(name)) return 'Nebenkosten';
-      if (/gehalt|lohn|krankenkasse/.test(name)) return 'Personal';
-      if (/miete|vermiet|immobil/.test(name)) return 'Miete';
-      return 'Unkategorisiert';
-    };
+    // Nachträgliche Initialisierung von aiResponse (parse5-safe)
+    aiResponse: null,
+// ...existing code...
+// categorizeSupplier jetzt außerhalb des Objekts
+};
 
+const categorizeSupplier = (supplierName) => {
+  const name = (supplierName || '').toLowerCase().trim();
+  if (/lightspeed|stripe|paypal|sumup|square/.test(name)) return 'Zahlungsanbieter';
+  if (/supermarkt|rewe|aldi|lidl|edeka|metro/.test(name)) return 'Wareneinkauf';
+  if (/bäck|metzger|fleisch|fisch|obst|gemüse/.test(name)) return 'Lebensmittel';
+  if (/steuer|finanzamt|umsatzsteuer/.test(name)) return 'Steuern';
+  if (/strom|gas|telefon|internet|vodafone|telekom/.test(name)) return 'Nebenkosten';
+  if (/gehalt|lohn|krankenkasse/.test(name)) return 'Personal';
+  if (/miete|vermiet|immobil/.test(name)) return 'Miete';
+  return 'Unkategorisiert';
+};
+
+    // Nachträgliche Initialisierung von aiResponse (parse5-safe)
+    DATA_CONFIG.aiResponse = (() => {
+      let result = (typeof prefix !== 'undefined' ? prefix : "");
+      if (typeof prompt !== 'undefined' && prompt.includes("hebel")) {
+        result += "Groesster Hebel: Personal.";
+      } else {
+        const delta = (typeof params !== 'undefined' ? (params?.price||0) + (params?.volume||0) - (params?.cost||0) : 0);
+        if (delta > 10) {
+          result += "Signifikanter Hebel: +" + delta + "%";
+        } else if (delta < -10) {
+          result += "Vorsicht: Verlust!";
+        } else {
+          result += "Neutral. Staerkere Hebel vorhanden.";
+        }
+      }
+      return result;
+    })();
     // === Icon Component ===
     const Icon = ({ name, size = 24, className = "", strokeWidth = 2, fill = "none" }) => {
       const ref = useRef(null);
@@ -254,7 +244,6 @@ initApp();
             </div>
           </div>
         </header>
-      );
     };
 
     // === REVENUE WIDGET (enriched with YoY) ===
@@ -1568,10 +1557,10 @@ initApp();
                     ))}
                   </div>
                 </div>
-                {flowViewMode === 'bowtie' 
-                  ? <BowTieFlow data={DATA_CONFIG} period={period} onPeriodChange={setPeriod} onDrillDown={setDrillCategory} onShowInsight={setDrillCategory} />
-                  : <MoneyFlowList data={DATA_CONFIG} period={period} onPeriodChange={setPeriod} onDrillDown={setDrillCategory} />
-                }
+                  {flowViewMode === 'bowtie'
+                    ? (<BowTieFlow data={DATA_CONFIG} period={period} onPeriodChange={setPeriod} onDrillDown={setDrillCategory} onShowInsight={setDrillCategory} />)
+                    : (<MoneyFlowList data={DATA_CONFIG} period={period} onPeriodChange={setPeriod} onDrillDown={setDrillCategory} />)
+                  }
               </div>
             )}
             {view === 'sandbox' && <SandboxView period={period} data={DATA_CONFIG} onLlmRequest={(prompt, params) => callLLMSimulator('Claude', prompt, params)} focusMode={focusMode} />}
@@ -1588,7 +1577,7 @@ initApp();
                     <button onClick={() => setJournalDetail('month')} className="bg-[#141824] border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition-all text-left cursor-pointer">
                       <Icon name="BarChart3" size={32} className="text-indigo-400 mb-4" />
                       <h3 className="font-bold text-white text-lg mb-2">Monatsbericht</h3>
-                      <p className="text-xs text-slate-400 mb-6">Detaillierte Analyse von Umsatz, Kosten und Gewinn diesen Monat</p>
+                        <p className="text-xs text-slate-400 mb-6">Detaillierte Analyse von Umsatz, Kosten und Gewinn diesen Monat</p>
                       <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold">Ansehen <Icon name="ArrowRight" size={14} /></span>
                     </button>
                     <button onClick={() => setJournalDetail('year')} className="bg-[#141824] border border-slate-800 rounded-2xl p-6 hover:border-slate-700 transition-all text-left cursor-pointer">
