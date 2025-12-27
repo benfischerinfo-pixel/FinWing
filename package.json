@@ -13,6 +13,7 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@babel/parser": "^7.28.5",
     "@vitejs/plugin-react": "^4.0.0",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.35",

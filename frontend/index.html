@@ -18,16 +18,18 @@
       window.babelErrors.push(errorMsg);
       document.body.innerHTML = '<div style="background: #ef4444; color: white; padding: 20px; font-family: monospace; white-space: pre-wrap;"><h1>⚠️ SCRIPT ERROR</h1>' + errorMsg + '<hr/><h2>Console Errors:</h2><div id="console-errors"></div></div>';
     });
-    
-    // Override console.error to capture Babel errors
-    const originalConsoleError = console.error;
-    console.error = function(...args) {
+        },
+      };
+    }
+  };
+  
+  // === Kategorisierung ===
       const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
       if (msg.includes('SyntaxError') || msg.includes('Unexpected') || msg.includes('babel')) {
         document.body.innerHTML = '<div style="background: #ef4444; color: white; padding: 20px; font-family: monospace; white-space: pre-wrap;"><h1>⚠️ BABEL/SYNTAX ERROR</h1><pre>' + msg + '</pre></div>';
       }
       originalConsoleError.apply(console, args);
-    };
+    }
   </script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -78,31 +80,25 @@
           return [];
         }
       }
-      if (raw && typeof raw === 'object' && raw.missions && Array.isArray(raw.missions)) {
-        return normalizeMissions(raw.missions);
-      }
-      return [];
     }
 
-    function loadMissions() {
-      try {
-        const raw = window.localStorage.getItem('finwing.missions');
-        const missions = normalizeMissions(raw);
-        return missions.length > 0 ? missions : demoMissions;
-      } catch (e) {
-        return demoMissions;
-      }
+// Wait for Lucide to load - with visual debugging
+const initApp = () => {
+  const rootEl = document.getElementById('root');
+  if (!rootEl) { console.warn('Missing #root'); return; }
+  if (window.lucide && window.lucide.icons) {
+    console.log('✅ Lucide loaded, mounting React...');
+    try {
+      const root = ReactDOM.createRoot(rootEl);
+      root.render(<FinWingApp />);
+    } catch (error) {
+      console.error('❌ React Render Error:', error);
     }
-
-    function saveMissions(missions) {
-      // Always save as a valid array, never 'undefined' or 'null' as string
-      try {
-        const safeMissions = normalizeMissions(missions);
-        window.localStorage.setItem('finwing.missions', JSON.stringify(safeMissions));
-      } catch (e) {
-        // ignore
-      }
-    }
+  } else {
+    setTimeout(initApp, 100);
+  }
+};
+initApp();
 
     // === DATA CONFIG (canonical from FinWingApp.jsx) ===
     const DATA_CONFIG = {
@@ -259,18 +255,6 @@
         </header>
       );
     };
-    // ...existing code...
-              <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Verfügbar</div>
-              <div className="text-2xl font-bold text-emerald-400">{formatEuro(available)}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Reserviert</div>
-              <div className="text-lg font-bold text-red-400/80">-{formatEuro(reserved)}</div>
-            </div>
-          </div>
-        </div>
-      );
-    };
 
     // === REVENUE WIDGET (enriched with YoY) ===
     const RevenueWidget = ({ data, periodData, period }) => {
@@ -291,6 +275,7 @@
           </div>
         </div>
       );
+    };
     };
 
     // === BUSINESS HEALTH STRIP (slim radar, unified KPI layout) ===
@@ -1312,7 +1297,7 @@
                 <span className="text-[10px] text-slate-500 font-bold uppercase">Top 3 Treiber</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                asArray(drill.items).slice(0,3).map((item, idx) => {
+                {asArray(drill.items).slice(0,3).map((item, idx) => {
                   const yoy = toYoY(item.total, item.ly, scale);
                   return (
                     <div key={idx} className="p-3 rounded-xl bg-[#141824] border border-slate-800">
@@ -1636,29 +1621,8 @@
               <Icon name="BookOpen" size={20} className="mr-2" /> Logbuch
             </button>
           </nav>
-
-    // Wait for Lucide to load - with visual debugging
-    const initApp = () => {
-      const rootEl = document.getElementById('root');
-      
-      if (!rootEl) { console.warn('Missing #root'); return; }
-if (window.lucide && window.lucide.icons) {
-        console.log('✅ Lucide loaded, mounting React...');
-        try {
-          const root = ReactDOM.createRoot(rootEl);
-          root.render(<FinWingApp />);
-        } catch (error) {
-          console.error('❌ React Render Error:', error);
-          rootEl.innerHTML = '<div style="color: red; padding: 20px; font-family: monospace;"><h1>RENDER ERROR</h1><pre>' + error.message + '\n\n' + error.stack + '</pre></div>';
-        }
-      } else {
-        console.log('⏳ Waiting for Lucide...');
-        rootEl.innerHTML = '<div style="color: yellow; padding: 20px;">Loading Lucide icons...</div>';
-        setTimeout(initApp, 100);
-      }
-    };
-    
-    setTimeout(initApp, 500);
+        </div>
+      );
   </script>
 <script>window.Babel && Babel.transformScriptTags();</script>
 </body>
